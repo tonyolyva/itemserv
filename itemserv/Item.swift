@@ -1,18 +1,45 @@
-//
-//  Item.swift
-//  itemserv
-//
-//  Created by Anatoliy Olyva on 4/18/25.
-//
-
 import Foundation
-import SwiftData
+@preconcurrency import SwiftData
 
 @Model
-final class Item {
-    var timestamp: Date
-    
-    init(timestamp: Date) {
-        self.timestamp = timestamp
+class Item {
+    @Attribute var id: String = UUID().uuidString
+    @Attribute var name: String = ""
+    @Attribute var itemDescription: String = ""
+    @Attribute var imageData: Data?
+    @Attribute var dateAdded: Date = Date()
+    @Attribute var barcodeValue: String = ""
+
+    @Relationship var category: Category?
+    @Relationship var room: Room?
+    @Relationship var sector: Sector?
+    @Relationship var shelf: Shelf?
+    @Relationship var boxNameRef: BoxName?
+    @Relationship var boxTypeRef: BoxType?
+
+    init(
+        name: String = "",
+        category: Category? = nil,
+        itemDescription: String = "",
+        imageData: Data? = nil,
+        room: Room? = nil,
+        sector: Sector? = nil,
+        shelf: Shelf? = nil,
+        boxNameRef: BoxName? = nil,
+        boxTypeRef: BoxType? = nil,
+        dateAdded: Date = Date(),
+        barcodeValue: String = ""
+    ) {
+        self.name = name
+        self.category = category
+        self.itemDescription = itemDescription
+        self.imageData = imageData
+        self.room = room
+        self.sector = sector
+        self.shelf = shelf
+        self.boxNameRef = boxNameRef
+        self.boxTypeRef = boxTypeRef
+        self.dateAdded = dateAdded
+        self.barcodeValue = barcodeValue
     }
 }

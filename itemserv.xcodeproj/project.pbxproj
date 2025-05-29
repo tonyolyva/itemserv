@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7693A83D2DE91E1400B587F4 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7693A83C2DE91DF900B587F4 /* README.md */; };
+		76C23D692DDF7FFC00B2D7EE /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 76C23D682DDF7FFC00B2D7EE /* ZIPFoundation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		766E340E2DB2DB4F00B75BD7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +32,7 @@
 		766E33FC2DB2DB4D00B75BD7 /* itemserv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = itemserv.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		766E340D2DB2DB4F00B75BD7 /* itemservTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = itemservTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		766E34172DB2DB4F00B75BD7 /* itemservUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = itemservUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7693A83C2DE91DF900B587F4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -65,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				76C23D692DDF7FFC00B2D7EE /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +95,7 @@
 		766E33F32DB2DB4D00B75BD7 = {
 			isa = PBXGroup;
 			children = (
+				7693A83C2DE91DF900B587F4 /* README.md */,
 				766E33FE2DB2DB4D00B75BD7 /* itemserv */,
 				766E34102DB2DB4F00B75BD7 /* itemservTests */,
 				766E341A2DB2DB4F00B75BD7 /* itemservUITests */,
@@ -125,6 +133,7 @@
 			);
 			name = itemserv;
 			packageProductDependencies = (
+				76C23D682DDF7FFC00B2D7EE /* ZIPFoundation */,
 			);
 			productName = itemserv;
 			productReference = 766E33FC2DB2DB4D00B75BD7 /* itemserv.app */;
@@ -208,6 +217,9 @@
 			);
 			mainGroup = 766E33F32DB2DB4D00B75BD7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				76C23D672DDF7FFC00B2D7EE /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 766E33FD2DB2DB4D00B75BD7 /* Products */;
 			projectDirPath = "";
@@ -225,6 +237,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7693A83D2DE91E1400B587F4 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -575,6 +588,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		76C23D672DDF7FFC00B2D7EE /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		76C23D682DDF7FFC00B2D7EE /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 76C23D672DDF7FFC00B2D7EE /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 766E33F42DB2DB4D00B75BD7 /* Project object */;
 }

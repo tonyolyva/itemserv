@@ -1,10 +1,3 @@
-//
-//  itemservUITestsLaunchTests.swift
-//  itemservUITests
-//
-//  Created by Anatoliy Olyva on 4/18/25.
-//
-
 import XCTest
 
 final class itemservUITestsLaunchTests: XCTestCase {

@@ -1,10 +1,3 @@
-//
-//  itemservApp.swift
-//  itemserv
-//
-//  Created by Anatoliy Olyva on 4/18/25.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -13,8 +6,17 @@ struct itemservApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            Category.self,
+            Room.self,
+            Sector.self,
+            Shelf.self,
+            BoxName.self,
+            BoxType.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            cloudKitDatabase: .private("iCloud.com.tonyyuta.itemserv")
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -25,7 +27,17 @@ struct itemservApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppTabView()
+                .onOpenURL { url in
+                    if url.startAccessingSecurityScopedResource() {
+                        defer { url.stopAccessingSecurityScopedResource() }
+                        
+                        if url.pathExtension.lowercased() == "csv" {
+                            print("Opened CSV file: \(url.lastPathComponent)")
+                            // Future enhancement: route this URL to an import handler
+                        }
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }
