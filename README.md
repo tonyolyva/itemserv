@@ -13,7 +13,7 @@
 - 📦 **"Unboxed" Support**: Manage items not stored in any box.
 - 🔄 **Import & Export**: Backup and restore items (JSON + image .zip format).
 - 🖨️ **Label Printing**: Compatible with Brother QL-1110NWB and QL-1110NWBC printes.
-- 🖨️ **Label Printing**: Box: DK1202 2.4x4" (62x100mm). Item: DK2205 2.4x1.5" (62x38mm) or DK-1204 0.66x2.1" (17x54mm)
+- 🖨️ **Label Printing**: Box: DK-1202 2.4x4" (62x100mm). Item: DK-2205 2.4x1.5" (62x38mm) or DK-1204 0.66x2.1" (17x54mm)
 - 📷 **Item Barcode Scanning**: Fast item lookup via barcode.
 - 📷 **Item Barcode Scanning**: Add Item: Fast info lookup via existing barcode (from external Public DB) to add Name, Description, and Image.
 - 📷 **Box Barcode Scanning**: Fast box lookup (with linked items) via barcode.
