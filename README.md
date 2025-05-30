@@ -74,21 +74,27 @@ GitHub: [github.com/yourusername](https://github.com/tonyolyva)
 ---
 
 ## 📸 Screenshots 
-* **export items**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_items.jpeg
-* **admin panel**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/admin_panel.jpeg
+
+* **items**: Main View https://github.com/tonyolyva/itemserv/blob/main/Screenshots/items.jpeg
+* **items filter**: Room https://github.com/tonyolyva/itemserv/blob/main/Screenshots/items_filter.jpeg
+
 * **box linked items expanded**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_expanded.jpeg
 * **box linked items collapsed**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_collapsed.jpeg
-* **export categories**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_categories.jpeg
 * **box linked items filter**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_filter.jpeg
-* **import categories**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_categories.jpeg
-* **import export_items**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_export_items.jpeg
-* **import items_select_multiple_zip**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_items_select_multiple_zip.jpeg
-* **items filter**: rooms https://github.com/tonyolyva/itemserv/blob/main/Screenshots/items_filter.jpeg
-* **manage_box_names**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_names.jpeg
-* **manage_box_types**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_types.jpeg
-* **manage_categories**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_categories.jpeg
-* **manage_rooms**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_rooms.jpeg
-* **manage_sectors**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_sectors.jpeg
-* **manage_shelves**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_shelves.jpeg
 
+* **admin panel**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/admin_panel.jpeg
+
+* **manage categories**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_categories.jpeg
+* **export categories**: csv https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_categories.jpeg
+* **import categories**: csv https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_categories.jpeg
+
+* **manage rooms**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_rooms.jpeg
+* **manage sectors**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_sectors.jpeg
+* **manage shelves**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_shelves.jpeg
+* **manage box names**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_names.jpeg
+* **manage box types**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_types.jpeg
+
+* **import or export items**: json compressed https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_export_items.jpeg
+* **export items**: json compressed file backup (items only) https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_items.jpeg
+* **import items**: select multiple json compressed files https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_items_select_multiple_zip.jpeg
 
