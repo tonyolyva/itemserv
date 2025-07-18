@@ -71,8 +71,8 @@ This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## 👨‍💻 Author
 
-Developed by [Your Name]  
-GitHub: [github.com/yourusername](https://github.com/tonyolyva)
+Developed by tonyolyva  
+GitHub: https://github.com/tonyolyva
 
 ---
 
