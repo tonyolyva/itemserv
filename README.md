@@ -1,22 +1,30 @@
 # 📦 itemserv
 
-**itemserv** is an iOS/iPadOS app designed to help you organize, locate, and manage physical items in a warehouse, garage, or storage room. It supports a customizable hierarchy of Rooms → Sectors → Shelves → Boxes → Items, all stored with rich metadata and optional photos.
+**itemserv** is a powerful SwiftUI-based iOS/iPadOS app to organize and track storage items and boxes — with CloudKit sync, barcode scanning, label printing, and import/export support.
+
+![Platform](https://img.shields.io/badge/platform-iOS%2017+-lightgrey)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-%F0%9F%94%A5-orange)
+![License](https://img.shields.io/github/license/tonyolyva/itemserv)
 
 ---
 
 ## 🚀 Features
 
-- 📂 **Flexible Hierarchy**: Organize items by Room, Sector, Shelf, and Box.
-- 🗃️ **Box Types & Names**: Customizable box names and types (e.g., plastic, cardboard).
-- 🖼️ **Image Support**: Attach photos to each item.
-- 🔍 **Powerful Filtering**: Search and filter by category, box, room, and more.
-- 📦 **"Unboxed" Support**: Manage items not stored in any box.
-- 🔄 **Import & Export**: Backup and restore items (JSON + image .zip format).
-- 🖨️ **Label Printing**: Compatible with Brother QL-1110NWB and QL-1110NWBC printes.
-- 🖨️ **Label Printing**: Box: DK-1202 2.4x4" (62x100mm). Item: DK-2205 2.4x1.5" (62x38mm) or DK-1204 0.66x2.1" (17x54mm)
-- 📷 **Item Barcode Scanning**: Fast item lookup via barcode.
-- 📷 **Item Barcode Scanning**: Add Item: Fast info lookup via existing barcode (from external Public DB) to add Name, Description, and Image.
-- 📷 **Box Barcode Scanning**: Fast box lookup (with linked items) via barcode.
+- 📂 **Flexible Hierarchy**: Organize items by Room → Sector → Shelf → Box → Item.
+- 🗃️ **Custom Box Metadata**: Box names and types (e.g., plastic, cardboard, wood).
+- 🖼️ **Image Attachments**: Add photos to any item.
+- 🔍 **Advanced Filtering**: Filter by room, sector, box, type, or category.
+- 📦 **Unboxed Items**: Track items not assigned to any box.
+- 📤 **Import/Export**: Backup and restore via `.zip` (JSON + images).
+- 🖨️ **Label Printing**: Supports Brother QL-1110NWBC.
+  - Box labels: DK-1202 (2.4x4")
+  - Item labels: DK-2205 (2.4x1.5") or DK-1204 (0.66x2.1")
+- 📷 **Barcode Scanning**:
+  - **Item Lookup**: Auto-fill item name, description, and image from public barcode DBs.
+  - **Box & Item Search**: Instantly locate by scanning a printed barcode.
+- 👤 **Admin Panel**: Manage Rooms, Sectors, Shelves, Box Names, Types, and Categories.
+- ✅ **Production-tested**: Used daily to manage a real household inventory of 800+ items.
+- 🚀 **Distributed via TestFlight** with bug tracking and iterative improvements.
 
 ---
 
@@ -25,79 +33,76 @@
 - iOS/iPadOS 17+
 - Swift 5.9+
 - Xcode 15+
-- iCloud enabled (for CloudKit-based sync)
+- iCloud enabled (for CloudKit private sync)
 
 ---
 
-## 🛠️ Technologies
+## 🛠️ Technologies Used
 
-- SwiftUI
-- SwiftData
-- CloudKit
-- CoreImage & AVFoundation (for barcode scanning)
-- UIKit bridge (for camera/image picker)
+- **SwiftUI** – Declarative UI
+- **SwiftData** – Persistence & relationships
+- **CloudKit** – Syncing and storage
+- **CoreImage & AVFoundation** – Barcode scanning
+- **UIKit bridge** – For camera and image picker
 
 ---
 
-## 📦 Structure
+## 📦 Project Structure
 
-- `Models/` – SwiftData models: Item, Room, Sector, Shelf, BoxName, BoxType, Category
-- `Views/` – SwiftUI views for main interface and admin panels
-- `Helpers/` – Utilities for barcode, image handling, printing, etc.
-- `ExportImport/` – Zip-based backup and restore logic
+```
+itemserv/
+├── Models/         # SwiftData models (Item, Room, BoxType, etc.)
+├── Views/          # SwiftUI views for user and admin flows
+├── ExportImport/   # Zip backup/restore logic
+├── Helpers/        # Utilities: printing, barcodes, images
+```
 
 ---
 
 ## 🔐 iCloud / Privacy
 
-All data is stored locally on device and optionally synced with iCloud (CloudKit private database). No data is sent to third parties.
+All data is stored locally and optionally synced to your private iCloud database.  
+**No external servers, tracking, or analytics.**
 
 ---
 
-## 💡 Future Plans
+## 💡 Roadmap
 
-- Tagging and smart folders
-- iCloud sharing (multi-user access)
-- AI-based item recognition
-- More printer support
+- [ ] Tag-based categorization and smart folders
+- [ ] CloudKit sharing for multi-user home access
+- [ ] AI-based item recognition (on-device CoreML)
+- [ ] Additional printer model support
 
 ---
 
-## 📃 License
+## 📸 Screenshots
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+| View | Screenshot |
+|------|------------|
+| Main Items View | ![items](Screenshots/items.jpeg) |
+| Filter by Room | ![filter](Screenshots/items_filter.jpeg) |
+| Box (Expanded) | ![expanded](Screenshots/box_linked_items_expanded.jpeg) |
+| Box (Collapsed) | ![collapsed](Screenshots/box_linked_items_collapsed.jpeg) |
+| Admin Panel | ![admin](Screenshots/admin_panel.jpeg) |
+| Category Management | ![cat](Screenshots/manage_categories.jpeg) |
+| Import/Export | ![import](Screenshots/import_export_items.jpeg) |
 
 ---
 
 ## 👨‍💻 Author
 
-Developed by tonyolyva  
-GitHub: https://github.com/tonyolyva
+Developed by **tonyolyva**  
+GitHub: [github.com/tonyolyva](https://github.com/tonyolyva)
 
 ---
 
-## 📸 Screenshots 
+## 📃 License
 
-* **items**: Main View https://github.com/tonyolyva/itemserv/blob/main/Screenshots/items.jpeg
-* **items filter**: Room https://github.com/tonyolyva/itemserv/blob/main/Screenshots/items_filter.jpeg
+MIT License – See [`LICENSE`](LICENSE) for details.
 
-* **box linked items expanded**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_expanded.jpeg
-* **box linked items collapsed**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_collapsed.jpeg
-* **box linked items filter**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/box_linked_items_filter.jpeg
+---
 
-* **admin panel**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/admin_panel.jpeg
+## 📄 Resume + Portfolio
 
-* **manage categories**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_categories.jpeg
-* **export categories**: csv https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_categories.jpeg
-* **import categories**: csv https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_categories.jpeg
-
-* **manage rooms**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_rooms.jpeg
-* **manage sectors**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_sectors.jpeg
-* **manage shelves**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_shelves.jpeg
-* **manage box names**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_names.jpeg
-* **manage box types**: https://github.com/tonyolyva/itemserv/blob/main/Screenshots/manage_box_types.jpeg
-
-* **import or export items**: json compressed https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_export_items.jpeg
-* **export items**: json compressed file backup (items only) https://github.com/tonyolyva/itemserv/blob/main/Screenshots/export_items.jpeg
-* **import items**: select multiple json compressed files https://github.com/tonyolyva/itemserv/blob/main/Screenshots/import_items_select_multiple_zip.jpeg
-
+- 🔗 [Piter Bronson Resume (PDF)](https://yourportfolio.com/resume.pdf) *(replace with actual link)*
+- 🔗 [CalculMath – iOS Calculator App](https://github.com/tonyolyva/CalculMath)
