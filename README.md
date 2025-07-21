@@ -102,7 +102,7 @@ MIT License – See [`LICENSE`](LICENSE) for details.
 
 ---
 
-## 📄 Resume + Portfolio
+## 📄 Portfolio
 
-- 🔗 [Piter Bronson Resume (PDF)](https://yourportfolio.com/resume.pdf) *(replace with actual link)*
+- 🔗 [Piter Bronson Portfolio](https://tonyolyva.carrd.co)
 - 🔗 [CalculMath – iOS Calculator App](https://github.com/tonyolyva/CalculMath)
