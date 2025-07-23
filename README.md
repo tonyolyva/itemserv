@@ -1,6 +1,6 @@
 # 📦 itemserv
 
-**itemserv** is a powerful SwiftUI-based iOS/iPadOS app to organize and track storage items and boxes — with CloudKit sync, barcode scanning, label printing, and import/export support.
+**ItemServ** is a powerful SwiftUI-based iOS/iPadOS app to organize and track storage items and boxes — with CloudKit sync, barcode scanning, label printing, and import/export support.
 
 ![Platform](https://img.shields.io/badge/platform-iOS%2017+-lightgrey)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-%F0%9F%94%A5-orange)
@@ -104,5 +104,5 @@ MIT License – See [`LICENSE`](LICENSE) for details.
 
 ## 📄 Portfolio
 
-- 🔗 [Piter Bronson Portfolio](https://tonyolyva.carrd.co)
+- 🔗 [Anatoliy Olyva Portfolio](https://tonyolyva.carrd.co)
 - 🔗 [CalculMath – iOS Calculator App](https://github.com/tonyolyva/CalculMath)
