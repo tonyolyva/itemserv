@@ -18,6 +18,11 @@ struct ItemDetailView: View {
                         .font(.body)
                 }
 
+                // Status info section (added/updated)
+                Text(relativeUpdateText(for: item))
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+
                 Divider()
                 barcodeSection
                 categorySection
@@ -52,6 +57,44 @@ struct ItemDetailView: View {
             processItemImageIfNeeded()
         }
     }
+
+private func relativeUpdateText(for item: Item) -> String {
+    let now = Date()
+    let interval: TimeInterval
+    let prefix: String
+
+    if abs(item.lastUpdated.timeIntervalSince(item.dateAdded)) > 5 {
+        interval = now.timeIntervalSince(item.lastUpdated)
+        prefix = "✏️"
+    } else {
+        interval = now.timeIntervalSince(item.dateAdded)
+        prefix = "🆕"
+    }
+
+    let seconds = Int(interval)
+    let minutes = seconds / 60
+    let hours = minutes / 60
+    let days = hours / 24
+    let months = days / 30
+    let years = days / 365
+
+    let formatted: String
+    if seconds < 60 {
+        formatted = "\(seconds)s"
+    } else if minutes < 60 {
+        formatted = "\(minutes)m"
+    } else if hours < 24 {
+        formatted = "\(hours)h"
+    } else if days < 30 {
+        formatted = "\(days)d"
+    } else if months < 12 {
+        formatted = "\(months)mo"
+    } else {
+        formatted = "\(years)y"
+    }
+
+    return "\(prefix) \(formatted) ago"
+}
 
     private func processItemImageIfNeeded() {
         guard processedUIImage == nil,

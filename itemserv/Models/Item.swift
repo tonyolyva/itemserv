@@ -9,6 +9,7 @@ class Item {
     @Attribute var imageData: Data?
     @Attribute var dateAdded: Date = Date()
     @Attribute var barcodeValue: String = ""
+    @Attribute var lastUpdated: Date = Date()
 
     @Relationship var category: Category?
     @Relationship var room: Room?
@@ -55,9 +56,11 @@ class Item {
         self.boxTypeRef = boxTypeRef
         self.dateAdded = dateAdded
         self.barcodeValue = barcodeValue
+        self.lastUpdated = Date()
     }
 
     init() {
         print("🚨 Item default-initialized!")
+        self.lastUpdated = Date()
     }
 }

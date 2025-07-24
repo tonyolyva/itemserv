@@ -110,6 +110,7 @@ struct EditItemView: View {
                     item.shelf = selectedShelf
                     item.boxNameRef = selectedBoxName
                     item.boxTypeRef = selectedBoxType
+                    item.lastUpdated = Date()
                     dismiss()
                 }
             }

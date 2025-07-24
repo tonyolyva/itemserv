@@ -26,6 +26,25 @@
 - ✅ **Production-tested**: Used daily to manage a real household inventory of 800+ items.
 - 🚀 **Distributed via TestFlight** with bug tracking and iterative improvements.
 
+### 🧠 Smart Sorting & Status Features
+#### 🔽 Sort by Recently Added or Modified (Default)
+- Items are automatically sorted by most recently **added or edited**
+- Options:
+  - **Recent** (default): latest added or updated
+  - **A → Z**, **Z → A**: alphabetical sorting
+- This helps you quickly find what’s new or recently changed
+#### 👁️ Info / Compact Status Toggle
+- A **“Status” toggle button** appears next to sort options
+- Modes:
+  - **Info**: shows 🆕 or ✏️ badges with how long ago it was added/updated (e.g. `✏️ 3h ago`)
+  - **Compact**: hides status for a cleaner view (default)
+#### 📄 Detail View with Added/Modified Indicator
+- Every item detail view shows a subtle status:
+  - `🆕 2d ago` — newly added
+  - `✏️ 4h ago` — recently updated
+- Time is shown using smart compact units: `s`, `m`, `h`, `d`, `mo`, `y`
+✅ These features give you high visibility into your inventory activity, while keeping the interface clean and efficient.
+
 ---
 
 ## 📱 Requirements

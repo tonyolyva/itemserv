@@ -9,7 +9,17 @@ struct ItemListView: View {
     @Query private var categories: [Category]
     @Query private var boxTypes: [BoxType]
     @State private var searchText = ""
-    @State private var sortAscending = true
+    enum SortOrder: String, CaseIterable, Identifiable {
+        // most recently added or updated
+        case recent = "Recent"
+        case aToZ = "A → Z"
+        case zToA = "Z → A"
+
+        var id: String { rawValue }
+    }
+
+    @State private var sortOrder: SortOrder = .recent
+    @State private var showStatus: Bool = false
     @State private var isShowingScanner = false
     @State private var scannedCode: String?
     @State private var selectedItemToNavigate: Item?
@@ -30,9 +40,19 @@ struct ItemListView: View {
     @State private var selectedBoxType: BoxType?
 
     private var filteredItems: [Item] {
-        let sorted = sortAscending
-            ? allItems.sorted { $0.name.lowercased() < $1.name.lowercased() }
-            : allItems.sorted { $0.name.lowercased() > $1.name.lowercased() }
+        let sorted: [Item]
+        switch sortOrder {
+        case .recent:
+            sorted = allItems.sorted(by: { (lhs: Item, rhs: Item) in
+                let lhsDate = max(lhs.lastUpdated, lhs.dateAdded, lhs.id.uuidDate)
+                let rhsDate = max(rhs.lastUpdated, rhs.dateAdded, rhs.id.uuidDate)
+                return lhsDate > rhsDate
+            })
+        case .aToZ:
+            sorted = allItems.sorted { $0.name.lowercased() < $1.name.lowercased() }
+        case .zToA:
+            sorted = allItems.sorted { $0.name.lowercased() > $1.name.lowercased() }
+        }
 
         let searched = searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? sorted
@@ -164,11 +184,20 @@ private var contentView: some View {
             }
             .padding(.horizontal)
 
-            Picker("Sort", selection: $sortAscending) {
-                Text("A → Z").tag(true)
-                Text("Z → A").tag(false)
+            HStack {
+                Picker("Sort", selection: $sortOrder) {
+                    ForEach(SortOrder.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Button(action: { showStatus.toggle() }) {
+                    Label("Status", systemImage: showStatus ? "info.circle.fill" : "info.circle")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.plain)
             }
-            .pickerStyle(.segmented)
             .padding(.horizontal)
 
             Picker("Filter", selection: $filterSelection) {
@@ -293,11 +322,21 @@ private var contentView: some View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                 if !item.itemDescription.isEmpty {
-                                    Text(item.itemDescription)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(2)
-                                        .truncationMode(.tail)
+                                    HStack {
+                                        Text(item.itemDescription)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                            .truncationMode(.tail)
+
+                                        Spacer()
+
+                                        if showStatus {
+                                            Text(relativeUpdateText(for: item))
+                                                .font(.caption2)
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -310,14 +349,64 @@ private var contentView: some View {
     }
 }
 
+// Duplicate declarations removed.
+
+
 private func deleteItems(at offsets: IndexSet) {
     for index in offsets {
         modelContext.delete(filteredItems[index])
     }
 }
+
+private func relativeUpdateText(for item: Item) -> String {
+    let now = Date()
+    let interval: TimeInterval
+    let prefix: String
+
+    if abs(item.lastUpdated.timeIntervalSince(item.dateAdded)) > 5 {
+        interval = now.timeIntervalSince(item.lastUpdated)
+        prefix = "✏️"
+    } else {
+        interval = now.timeIntervalSince(item.dateAdded)
+        prefix = "🆕"
+    }
+
+    let seconds = Int(interval)
+    let minutes = seconds / 60
+    let hours = minutes / 60
+    let days = hours / 24
+    let months = days / 30
+    let years = days / 365
+
+    let formatted: String
+    if seconds < 60 {
+        formatted = "\(seconds)s"
+    } else if minutes < 60 {
+        formatted = "\(minutes)m"
+    } else if hours < 24 {
+        formatted = "\(hours)h"
+    } else if days < 30 {
+        formatted = "\(days)d"
+    } else if months < 12 {
+        formatted = "\(months)mo"
+    } else {
+        formatted = "\(years)y"
+    }
+
+    return "\(prefix) \(formatted) ago"
+}
+
 }
 
 #Preview {
     ItemListView()
         .modelContainer(sharedModelContainer)
+}
+
+import Foundation
+
+extension String {
+    var uuidDate: Date {
+        return Date.distantPast
+    }
 }
