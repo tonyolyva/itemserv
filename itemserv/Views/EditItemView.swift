@@ -60,6 +60,11 @@ struct EditItemView: View {
 
         return sorted
     }
+
+    private func boxNameLabel(_ boxName: BoxName) -> String {
+        let count = boxName.items?.count ?? 0
+        return "\(boxName.boxNameText) (\(count))"
+    }
     @Query(filter: nil, sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
     
     private enum ActivePicker: Identifiable {
@@ -242,7 +247,7 @@ struct EditItemView: View {
                         title: "Box Name",
                         items: boxNames,
                         selected: selectedBoxName,
-                        label: { $0.boxNameText },
+                        label: { boxNameLabel($0) },
                         onSelect: { selectedBoxName = $0 }
                     )
                     .navigationTitle("Box Name")
