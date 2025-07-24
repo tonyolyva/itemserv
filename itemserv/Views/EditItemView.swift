@@ -47,10 +47,17 @@ struct EditItemView: View {
     @Query(filter: nil, sort: \Shelf.shelfName) private var shelves: [Shelf]
     @Query(filter: nil, sort: \BoxName.boxNameText) private var allBoxNames: [BoxName]
     private var boxNames: [BoxName] {
-        let sorted = allBoxNames.sorted { $0.boxNameText.localizedCaseInsensitiveCompare($1.boxNameText) == .orderedAscending }
+        let deduplicated = Dictionary(grouping: allBoxNames, by: { $0.boxNameText })
+            .compactMap { $0.value.first }
+
+        let sorted = deduplicated.sorted {
+            $0.boxNameText.localizedStandardCompare($1.boxNameText) == .orderedAscending
+        }
+
         if let unboxed = sorted.first(where: { $0.boxNameText == "Unboxed" }) {
             return [unboxed] + sorted.filter { $0.boxNameText != "Unboxed" }
         }
+
         return sorted
     }
     @Query(filter: nil, sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
