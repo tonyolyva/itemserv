@@ -63,7 +63,7 @@ struct EditItemView: View {
 
     private func boxNameLabel(_ boxName: BoxName) -> String {
         let count = boxName.items?.count ?? 0
-        return "\(boxName.boxNameText) (\(count))"
+        return count > 0 ? "\(boxName.boxNameText) (\(count))" : boxName.boxNameText
     }
     @Query(filter: nil, sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
     
