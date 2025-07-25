@@ -266,7 +266,11 @@ struct EditItemView: View {
                         selected: selectedBoxName,
                         label: { boxName in
                             let count = boxName.items?.count ?? 0
-                            return "📦 \(boxName.boxNameText)   ✨\(count)"
+                            if count > 0 {
+                                return "📦 \(boxName.boxNameText)   ✨\(count)"
+                            } else {
+                                return "📦 \(boxName.boxNameText)"
+                            }
                         },
                         onSelect: { selectedBoxName = $0 }
                     )
