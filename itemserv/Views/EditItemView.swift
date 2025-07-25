@@ -61,9 +61,26 @@ struct EditItemView: View {
         return sorted
     }
 
-    private func boxNameLabel(_ boxName: BoxName) -> String {
+    private func boxNameLabel(_ boxName: BoxName) -> some View {
         let count = boxName.items?.count ?? 0
-        return count > 0 ? "\(boxName.boxNameText) (\(count))" : boxName.boxNameText
+        return HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "shippingbox")
+                    .foregroundColor(.accentColor)
+                Text(boxName.boxNameText)
+                    .foregroundColor(.primary)
+            }
+            Spacer()
+            if count > 0 {
+                HStack(spacing: 4) {
+                    Text("✨")
+                    Text("\(count)")
+                        .monospacedDigit()
+                }
+                .foregroundColor(.secondary)
+                .frame(minWidth: 44, alignment: .trailing)
+            }
+        }
     }
     @Query(filter: nil, sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
     
@@ -247,7 +264,10 @@ struct EditItemView: View {
                         title: "Box Name",
                         items: boxNames,
                         selected: selectedBoxName,
-                        label: { boxNameLabel($0) },
+                        label: { boxName in
+                            let count = boxName.items?.count ?? 0
+                            return "📦 \(boxName.boxNameText)   ✨\(count)"
+                        },
                         onSelect: { selectedBoxName = $0 }
                     )
                     .navigationTitle("Box Name")
