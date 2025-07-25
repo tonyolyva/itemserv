@@ -235,22 +235,6 @@ public struct AddItemView: View {
                             label: { $0.shelfName },
                             onSelect: { tempSelectedShelfID = $0?.persistentModelID }
                         )
-//                    case .boxName:
-//                        FullScreenPicker(
-//                            title: "Box Name",
-//                            items: boxNames,
-//                            selected: boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID }),
-//                            label: { boxName in
-//                                let count = boxName.items?.count ?? 0
-//                                return String(
-//                                    format: "%-22@%@%@",
-//                                    boxName.boxNameText,
-//                                    count > 0 ? "✨ " : "",
-//                                    count > 0 ? "\(count)" : ""
-//                                )
-//                            },
-//                            onSelect: { tempSelectedBoxNameID = $0?.persistentModelID }
-//                        )
                     case .boxName:
                         let uniqueBoxNames = Dictionary(grouping: boxNames, by: \.boxNameText)
                             .compactMap { $0.value.first }
@@ -393,28 +377,52 @@ private extension AddItemView {
             .listRowInsets(EdgeInsets())
         }
     }
-
-    // Save button now in toolbar; remove section from form.
 }
 
 // MARK: - Setup & Helpers
 private extension AddItemView {
     func setupView() {
-        categories = (try? modelContext.fetch(
+        // Fetch and deduplicate categories
+        let fetchedCategories = (try? modelContext.fetch(
             FetchDescriptor<Category>(
                 sortBy: [SortDescriptor(\.categoryName, order: .forward)]
             )
         )) ?? []
-        rooms = (try? modelContext.fetch(FetchDescriptor<Room>(sortBy: [SortDescriptor(\.roomName, order: .forward)]))) ?? []
-        sectors = (try? modelContext.fetch(FetchDescriptor<Sector>(sortBy: [SortDescriptor(\.sectorName, order: .forward)]))) ?? []
-        shelves = (try? modelContext.fetch(FetchDescriptor<Shelf>(sortBy: [SortDescriptor(\.shelfName, order: .forward)]))) ?? []
+        categories = Dictionary(grouping: fetchedCategories, by: \.categoryNameWrapped)
+            .compactMap { $0.value.first }
+            .sorted { $0.categoryNameWrapped < $1.categoryNameWrapped }
+
+        // Fetch and deduplicate rooms
+        let fetchedRooms = (try? modelContext.fetch(FetchDescriptor<Room>(sortBy: [SortDescriptor(\.roomName, order: .forward)]))) ?? []
+        rooms = Dictionary(grouping: fetchedRooms, by: \.roomName)
+            .compactMap { $0.value.first }
+            .sorted { $0.roomName < $1.roomName }
+
+        // Fetch and deduplicate sectors
+        let fetchedSectors = (try? modelContext.fetch(FetchDescriptor<Sector>(sortBy: [SortDescriptor(\.sectorName, order: .forward)]))) ?? []
+        sectors = Dictionary(grouping: fetchedSectors, by: \.sectorName)
+            .compactMap { $0.value.first }
+            .sorted { $0.sectorName < $1.sectorName }
+
+        // Fetch and deduplicate shelves
+        let fetchedShelves = (try? modelContext.fetch(FetchDescriptor<Shelf>(sortBy: [SortDescriptor(\.shelfName, order: .forward)]))) ?? []
+        shelves = Dictionary(grouping: fetchedShelves, by: \.shelfName)
+            .compactMap { $0.value.first }
+            .sorted { $0.shelfName < $1.shelfName }
+
+        // Box names (existing logic preserved)
         let fetchedBoxNames = (try? modelContext.fetch(FetchDescriptor<BoxName>(sortBy: [SortDescriptor(\.boxNameText, order: .forward)]))) ?? []
         if let unboxed = fetchedBoxNames.first(where: { $0.boxNameText.lowercased() == "unboxed" }) {
             boxNames = [unboxed] + fetchedBoxNames.filter { $0.persistentModelID != unboxed.persistentModelID }
         } else {
             boxNames = fetchedBoxNames
         }
-        boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>(sortBy: [SortDescriptor(\.boxTypeText, order: .forward)]))) ?? []
+
+        // Fetch and deduplicate box types
+        let fetchedBoxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>(sortBy: [SortDescriptor(\.boxTypeText, order: .forward)]))) ?? []
+        boxTypes = Dictionary(grouping: fetchedBoxTypes, by: \.boxTypeText)
+            .compactMap { $0.value.first }
+            .sorted { $0.boxTypeText < $1.boxTypeText }
 
         tempSelectedCategoryID = item.category?.persistentModelID
         tempSelectedRoomID = item.room?.persistentModelID
@@ -460,7 +468,6 @@ private extension AddItemView {
 
     func saveItem() {
         if item.barcodeValue.trimmingCharacters(in: .whitespaces).isEmpty {
-//            item.barcodeValue = "ITEM-\(UUID().uuidString.prefix(8))"
             item.barcodeValue = generateRandomEAN13()
         }
         if let selectedID = tempSelectedCategoryID {
@@ -511,7 +518,6 @@ private extension AddItemView {
         }
     }
 }
-
 
 // MARK: - Image and Dismiss Helper
 private extension AddItemView {
@@ -596,23 +602,7 @@ private extension AddItemView {
             print("Failed to fetch or process image from URL: \(error)")
         }
     }
-    
-    //    func generateFakeEAN13() -> String {
-    //        var digits = (0..<12).map { _ in Int.random(in: 0...9) }
-    //
-    //        // Calculate EAN-13 check digit
-    //        let sum = digits.enumerated().reduce(0) { acc, pair in
-    //            let (index, digit) = pair
-    //            return acc + digit * (index.isMultiple(of: 2) ? 1 : 3)
-    //        }
-    //        let checkDigit = (10 - (sum % 10)) % 10
-    //        digits.append(checkDigit)
-    //
-    //        return digits.map(String.init).joined()
-    //    }
 }
-
-
 
 // MARK: - Full-Screen Picker View
 struct FullScreenPicker<T: Identifiable & Equatable>: View {
@@ -626,13 +616,6 @@ struct FullScreenPicker<T: Identifiable & Equatable>: View {
 
     var body: some View {
         List {
-            Section {
-                Button("None") {
-                    onSelect(nil)
-                    dismiss()
-                }
-            }
-
             Section {
                 ForEach(items) { item in
                     Button {
