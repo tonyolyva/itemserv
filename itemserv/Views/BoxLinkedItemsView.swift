@@ -40,10 +40,13 @@ struct BoxLinkedItemsView: View {
             ? paired.sorted { $0.1 < $1.1 }.map { $0.0 }
             : paired.sorted { $0.1 > $1.1 }.map { $0.0 }
 
+        // Remove duplicate box names, preserving order
+        var seen = Set<String>()
+        let deduped = sorted.filter { seen.insert($0.boxNameText).inserted }
         if let unboxed = unboxed {
-            return sortAscending ? [unboxed] + sorted : sorted + [unboxed]
+            return sortAscending ? [unboxed] + deduped : deduped + [unboxed]
         } else {
-            return sorted
+            return deduped
         }
     }
     
@@ -53,24 +56,34 @@ struct BoxLinkedItemsView: View {
     }
     
     private var filteredBoxNames: [BoxName] {
-        var filtered = sortedBoxNames
+        var seen = Set<String>()
+        var deduped = sortedBoxNames.filter { seen.insert($0.boxNameText).inserted }
+
         if searchText.trimmed().isEmpty == false {
-            filtered = filtered.filter { $0.boxNameText.localizedCaseInsensitiveContains(searchText) }
+            deduped = deduped.filter { $0.boxNameText.localizedCaseInsensitiveContains(searchText) }
         }
+
         switch filterSelection {
         case .allBoxes:
             break
         case .onlyUnboxed:
-            filtered = []
+            deduped = []
             if let realUnboxed = boxNames.first(where: { $0.boxNameText == "Unboxed" }) {
-                filtered.append(realUnboxed)
+                deduped.append(realUnboxed)
             }
         case .excludeEmptyBoxes:
-            filtered = filtered.filter { ($0.items?.isEmpty == false) }
+            deduped = deduped.filter { ($0.items?.isEmpty == false) }
         case .emptyBoxesOnly:
-            filtered = filtered.filter { ($0.items?.isEmpty ?? true) }
+            deduped = deduped.filter { ($0.items?.isEmpty ?? true) }
         }
-        return filtered
+
+        // Move "Unboxed" to the top if present
+        if let unboxedIndex = deduped.firstIndex(where: { $0.boxNameText == "Unboxed" }) {
+            let unboxed = deduped.remove(at: unboxedIndex)
+            deduped.insert(unboxed, at: 0)
+        }
+
+        return deduped
     }
     
     private var allBoxesExpanded: Bool {
