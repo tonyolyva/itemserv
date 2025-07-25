@@ -235,12 +235,54 @@ public struct AddItemView: View {
                             label: { $0.shelfName },
                             onSelect: { tempSelectedShelfID = $0?.persistentModelID }
                         )
+//                    case .boxName:
+//                        FullScreenPicker(
+//                            title: "Box Name",
+//                            items: boxNames,
+//                            selected: boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID }),
+//                            label: { boxName in
+//                                let count = boxName.items?.count ?? 0
+//                                return String(
+//                                    format: "%-22@%@%@",
+//                                    boxName.boxNameText,
+//                                    count > 0 ? "✨ " : "",
+//                                    count > 0 ? "\(count)" : ""
+//                                )
+//                            },
+//                            onSelect: { tempSelectedBoxNameID = $0?.persistentModelID }
+//                        )
                     case .boxName:
+                        let uniqueBoxNames = Dictionary(grouping: boxNames, by: \.boxNameText)
+                            .compactMap { $0.value.first }
+                            .sorted { lhs, rhs in
+                                let lhsText = lhs.boxNameText
+                                let rhsText = rhs.boxNameText
+
+                                if lhsText == "Unboxed" {
+                                    return true
+                                } else if rhsText == "Unboxed" {
+                                    return false
+                                }
+
+                                if let lhsInt = Int(lhsText), let rhsInt = Int(rhsText) {
+                                    return lhsInt < rhsInt
+                                }
+
+                                return lhsText.localizedCompare(rhsText) == .orderedAscending
+                            }
+
                         FullScreenPicker(
                             title: "Box Name",
-                            items: boxNames,
-                            selected: boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID }),
-                            label: { $0.boxNameText },
+                            items: uniqueBoxNames,
+                            selected: uniqueBoxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID }),
+                            label: { boxName in
+                                let count = boxName.items?.count ?? 0
+                                let isUnboxed = boxName.boxNameText == "Unboxed"
+                                let spacing = isUnboxed ? "    " : "                   "
+                                return count > 0
+                                    ? "📦 \(boxName.boxNameText)\(spacing)✨ \(count)"
+                                    : "📦 \(boxName.boxNameText)"
+                            },
                             onSelect: { tempSelectedBoxNameID = $0?.persistentModelID }
                         )
                     case .boxType:
