@@ -41,10 +41,30 @@ struct EditItemView: View {
     
     @State private var isShowingScanner = false
     
-    @Query(filter: nil, sort: \Category.categoryName) private var categories: [Category]
-    @Query(filter: nil, sort: \Room.roomName) private var rooms: [Room]
-    @Query(filter: nil, sort: \Sector.sectorName) private var sectors: [Sector]
-    @Query(filter: nil, sort: \Shelf.shelfName) private var shelves: [Shelf]
+    @Query(filter: nil, sort: \Category.categoryName) private var allCategories: [Category]
+    private var categories: [Category] {
+        Dictionary(grouping: allCategories, by: { $0.categoryNameWrapped.lowercased() })
+            .compactMap { $0.value.first }
+            .sorted { $0.categoryNameWrapped.localizedCaseInsensitiveCompare($1.categoryNameWrapped) == .orderedAscending }
+    }
+    @Query(filter: nil, sort: \Room.roomName) private var allRooms: [Room]
+    private var rooms: [Room] {
+        Dictionary(grouping: allRooms, by: { $0.roomName.lowercased() })
+            .compactMap { $0.value.first }
+            .sorted { $0.roomName.localizedCaseInsensitiveCompare($1.roomName) == .orderedAscending }
+    }
+    @Query(filter: nil, sort: \Sector.sectorName) private var allSectors: [Sector]
+    private var sectors: [Sector] {
+        Dictionary(grouping: allSectors, by: { $0.sectorName.lowercased() })
+            .compactMap { $0.value.first }
+            .sorted { $0.sectorName.localizedCaseInsensitiveCompare($1.sectorName) == .orderedAscending }
+    }
+    @Query(filter: nil, sort: \Shelf.shelfName) private var allShelves: [Shelf]
+    private var shelves: [Shelf] {
+        Dictionary(grouping: allShelves, by: { $0.shelfName.lowercased() })
+            .compactMap { $0.value.first }
+            .sorted { $0.shelfName.localizedCaseInsensitiveCompare($1.shelfName) == .orderedAscending }
+    }
     @Query(filter: nil, sort: \BoxName.boxNameText) private var allBoxNames: [BoxName]
     private var boxNames: [BoxName] {
         let filtered = allBoxNames.filter { $0.boxNameText != "None" }
@@ -83,7 +103,12 @@ struct EditItemView: View {
             }
         }
     }
-    @Query(filter: nil, sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
+    @Query(filter: nil, sort: \BoxType.boxTypeText) private var allBoxTypes: [BoxType]
+    private var boxTypes: [BoxType] {
+        Dictionary(grouping: allBoxTypes, by: { $0.boxTypeText.lowercased() })
+            .compactMap { $0.value.first }
+            .sorted { $0.boxTypeText.localizedCaseInsensitiveCompare($1.boxTypeText) == .orderedAscending }
+    }
     
     private enum ActivePicker: Identifiable {
         case category, room, sector, shelf, boxName, boxType
