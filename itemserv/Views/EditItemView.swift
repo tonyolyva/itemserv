@@ -47,7 +47,8 @@ struct EditItemView: View {
     @Query(filter: nil, sort: \Shelf.shelfName) private var shelves: [Shelf]
     @Query(filter: nil, sort: \BoxName.boxNameText) private var allBoxNames: [BoxName]
     private var boxNames: [BoxName] {
-        let deduplicated = Dictionary(grouping: allBoxNames, by: { $0.boxNameText })
+        let filtered = allBoxNames.filter { $0.boxNameText != "None" }
+        let deduplicated = Dictionary(grouping: filtered, by: { $0.boxNameText })
             .compactMap { $0.value.first }
 
         let sorted = deduplicated.sorted {
@@ -203,7 +204,6 @@ struct EditItemView: View {
             item.imageData = resizedData
             selectedImage = resizedImage
         }
-        
         .sheet(item: $activePicker) { picker in
             switch picker {
             case .category:
@@ -266,11 +266,11 @@ struct EditItemView: View {
                         selected: selectedBoxName,
                         label: { boxName in
                             let count = boxName.items?.count ?? 0
-                            if count > 0 {
-                                return "📦 \(boxName.boxNameText)   ✨\(count)"
-                            } else {
-                                return "📦 \(boxName.boxNameText)"
-                            }
+                            let isUnboxed = boxName.boxNameText == "Unboxed"
+                            let spacing = isUnboxed ? "    " : "                   " // adjust as needed
+                            return count > 0
+                                ? "📦 \(boxName.boxNameText)\(spacing)✨ \(count)"
+                                : "📦 \(boxName.boxNameText)"
                         },
                         onSelect: { selectedBoxName = $0 }
                     )
@@ -320,13 +320,6 @@ struct EditItemView: View {
                         }
                     }
                 }
-
-//                EntityPickerView(
-//                    title: "Category",
-//                    selectedEntity: $selectedCategory,
-//                    entities: categories,
-//                    keyPath: \.categoryNameWrapped
-//                )
                 HStack {
                     Text("Category")
                     Spacer()
@@ -337,12 +330,6 @@ struct EditItemView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { activePicker = .category }
 
-//                EntityPickerView(
-//                    title: "Room",
-//                    selectedEntity: $selectedRoom,
-//                    entities: rooms,
-//                    keyPath: \.roomName
-//                )
                 HStack {
                     Text("Room")
                     Spacer()
@@ -353,12 +340,6 @@ struct EditItemView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { activePicker = .room }
 
-//                EntityPickerView(
-//                    title: "Sector",
-//                    selectedEntity: $selectedSector,
-//                    entities: sectors,
-//                    keyPath: \.sectorName
-//                )
                 HStack {
                     Text("Sector")
                     Spacer()
@@ -369,12 +350,6 @@ struct EditItemView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { activePicker = .sector }
 
-//                EntityPickerView(
-//                    title: "Shelf",
-//                    selectedEntity: $selectedShelf,
-//                    entities: shelves,
-//                    keyPath: \.shelfName
-//                )
                 HStack {
                     Text("Shelf")
                     Spacer()
@@ -385,29 +360,18 @@ struct EditItemView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { activePicker = .shelf }
 
-//                EntityPickerView(
-//                    title: "Box Name",
-//                    selectedEntity: $selectedBoxName,
-//                    entities: boxNames,
-//                    keyPath: \.boxNameText,
-//                    showNoneOption: false
-//                )
                 HStack {
                     Text("Box Name")
                     Spacer()
-                    Text(selectedBoxName?.boxNameText ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    if let boxName = selectedBoxName {
+                        Text(boxName.boxNameText)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { activePicker = .boxName }
 
-//                EntityPickerView(
-//                    title: "Box Type",
-//                    selectedEntity: $selectedBoxType,
-//                    entities: boxTypes,
-//                    keyPath: \.boxTypeText
-//                )
                 HStack {
                     Text("Box Type")
                     Spacer()
