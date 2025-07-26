@@ -27,12 +27,14 @@ class ItemLabelPrintHelper {
         // ----- DK1205 end -----
         */
         
+        print("🖨️ Preparing to generate label for item: \(item.name), barcode: \(item.barcodeValue)")
         UIGraphicsBeginImageContextWithOptions(CGSize(width: labelWidth, height: labelHeight), false, 1.0)
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
 
         // White background
         UIColor.white.setFill()
         context.fill(CGRect(x: 0, y: 0, width: labelWidth, height: labelHeight))
+
 
         // Draw item name and description at the top
         let nameFont = UIFont.systemFont(ofSize: 45, weight: .bold)
@@ -70,103 +72,111 @@ class ItemLabelPrintHelper {
         var descAttrs = descAttributes
         descAttrs[.paragraphStyle] = descParagraphStyle
         (item.itemDescription as NSString).draw(in: descriptionRect, withAttributes: descAttrs)
-        let barcodeHeight: CGFloat = labelHeight - descriptionY - descriptionSize.height - padding * 2 - 10
+        let barcodeHeight: CGFloat = labelHeight * 0.35
 
         // Draw barcode at the bottom
-        if let barcodeImage = generateBarcode(from: item.barcodeValue) {
-            let barcodeText = item.barcodeValue
-            if barcodeText.count == 13 {
-                let fullDigits = barcodeText
-                let fullDigitsWithoutLeading = String(fullDigits.dropFirst()) // remove the first digit (e.g., "0")
-                let firstDigit = String(fullDigitsWithoutLeading.prefix(1)) // use the next digit as the first visible digit
-                let visibleDigits = String(fullDigitsWithoutLeading.dropFirst().dropLast())
-                let leftGroup = String(visibleDigits.prefix(5))
-                let rightGroup = String(visibleDigits.dropFirst(5))
-                let trailingDigit = String(fullDigits.suffix(1)) // e.g., "9"
+        print("⚠️ barcodeValue: [\(item.barcodeValue)]")
+        let barcodeImage = generateBarcode(from: item.barcodeValue)
+        if let barcodeImage = barcodeImage {
+            print("✅ Barcode generated successfully")
+        } else {
+            print("❌ Barcode generation failed")
+        }
+        if let barcodeImage = barcodeImage, !item.barcodeValue.isEmpty {
+            let barcodeWidth: CGFloat = labelWidth * 0.9
+            let barcodeX = (labelWidth - barcodeWidth) / 2
+            let barcodeY = descriptionY + descriptionSize.height + 4
 
-                let digitFont = UIFont.monospacedDigitSystemFont(ofSize: 48, weight: .regular)
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: digitFont,
-                    .foregroundColor: UIColor.black
-                ]
+            let barcodeRect = CGRect(x: barcodeX, y: barcodeY, width: barcodeWidth, height: barcodeHeight)
+            barcodeImage.draw(in: barcodeRect)
 
-                let leftSize = (leftGroup as NSString).size(withAttributes: attributes)
+            // Draw barcode digits, grouped and extended slightly beyond the barcode image
+            let barcodeFont = UIFont.monospacedDigitSystemFont(ofSize: 42, weight: .medium)
+            let digitAttributes: [NSAttributedString.Key: Any] = [
+                .font: barcodeFont,
+                .foregroundColor: UIColor.black
+            ]
 
-                // Updated: raise barcode and crop bottom to simulate digit gaps
-                let digitHeight = leftSize.height
-                let barcodeWidth: CGFloat = labelWidth * 0.9
-                let barcodeX = (labelWidth - barcodeWidth) / 2
-                let barcodeY = labelHeight - barcodeHeight - padding - digitHeight / 2 + digitHeight / 4
+            let digitHeight = ("0" as NSString).size(withAttributes: digitAttributes).height
+            let digitY = barcodeY + barcodeHeight - digitHeight + 30
 
-                // Draw barcode slightly taller to mimic full-height
-                let barcodeRect = CGRect(x: barcodeX, y: barcodeY, width: barcodeWidth, height: barcodeHeight)
-                barcodeImage.draw(in: barcodeRect)
+            // Define digit groups (e.g., 6 39277 67064 9)
+            let groups = [1, 5, 5, 1] // 6       39277 67064       9
+            let extraSpacingIndexes: Set<Int> = [0, 10, 11, 12] // before 3, after 4, before 9, after 9
+            var digitIndex = item.barcodeValue.startIndex
+            var digitX = barcodeX - 37  // start slightly before barcode
 
-                // Calculate digit Y position (overlap digits with barcode)
-                let digitY = barcodeY + barcodeHeight - digitHeight / 2
+            for groupSize in groups {
+                let groupEnd = item.barcodeValue.index(digitIndex, offsetBy: groupSize, limitedBy: item.barcodeValue.endIndex) ?? item.barcodeValue.endIndex
+                let group = String(item.barcodeValue[digitIndex..<groupEnd])
+                let groupWidth = CGFloat(group.count) * 32
 
-                let firstDigitSize = (firstDigit as NSString).size(withAttributes: attributes)
-                let firstX = barcodeX - firstDigitSize.width - 4
-                let firstRect = CGRect(x: firstX - 2, y: digitY, width: firstDigitSize.width + 4, height: digitHeight)
-                context.setFillColor(UIColor.white.cgColor)
-                context.fill(firstRect)
-                (firstDigit as NSString).draw(in: firstRect, withAttributes: attributes)
+                for (i, char) in group.enumerated() {
+                    let digit = String(char) as NSString
+                    let digitSize = digit.size(withAttributes: digitAttributes)
+                    let horizontalPadding: CGFloat = 22  // 11pt on each side
 
-                // Position last digit to the right of the barcode
-                let trailingDigitSize = (trailingDigit as NSString).size(withAttributes: attributes)
-                let trailingX = barcodeX + barcodeWidth + 4
-                let trailingRect = CGRect(x: trailingX - 2, y: digitY, width: trailingDigitSize.width + 4, height: digitHeight)
-                context.setFillColor(UIColor.white.cgColor)
-                context.fill(trailingRect)
-                (trailingDigit as NSString).draw(in: trailingRect, withAttributes: attributes)
+                    // Compute background rect centered at digit center
+                    let digitCenterX = digitX + digitSize.width / 2
+                    let backgroundWidth: CGFloat = digitSize.width + horizontalPadding
+                    let backgroundRect = CGRect(
+                        x: digitCenterX - backgroundWidth / 2,
+                        y: digitY,
+                        width: backgroundWidth,
+                        height: digitSize.height
+                    )
 
-                let innerDigits = Array(leftGroup + rightGroup)
-                let totalInnerDigits = innerDigits.count
-                let innerDigitSpacing: CGFloat = 15.0 // To tune the spacing between the digits overlapping the barcode (both space before and after each digit, excluding the first and last)
+                    // Fill white background and draw digit
+                    UIColor.white.setFill()
+                    context.fill(backgroundRect)
 
-                // Insert an extra space (with white background) between the left and right group
-                let middleGap: CGFloat = innerDigitSpacing * 2
-                let middleIndex = totalInnerDigits / 2
+                    // Draw digit centered within its backgroundRect
+                    let digitDrawX = backgroundRect.midX - digitSize.width / 2
+                    let digitDrawRect = CGRect(x: digitDrawX, y: digitY, width: digitSize.width, height: digitSize.height)
+                    digit.draw(in: digitDrawRect, withAttributes: digitAttributes)
 
-                // Compute total width for centering, including middle gap
-                var totalWidth: CGFloat = 0
-                var digitSizes: [CGSize] = []
-                for char in innerDigits {
-                    let size = (String(char) as NSString).size(withAttributes: attributes)
-                    digitSizes.append(size)
-                    totalWidth += size.width
-                }
-                totalWidth += CGFloat(totalInnerDigits - 1) * innerDigitSpacing + middleGap
+                    // Index arithmetic to determine first and last digits
+                    let isFirstDigit = digitIndex == item.barcodeValue.startIndex && i == 0
+                    let isLastGroup = groupEnd == item.barcodeValue.endIndex
+                    let isLastDigit = isLastGroup && i == group.count - 1
 
-                var currentX = barcodeX + (barcodeWidth - totalWidth) / 2
-
-                for (index, char) in innerDigits.enumerated() {
-                    if index == middleIndex {
-                        // Add extra spacing in center
-                        currentX += middleGap
+                    let globalIndex = item.barcodeValue.distance(from: item.barcodeValue.startIndex, to: item.barcodeValue.index(digitIndex, offsetBy: i))
+                    let extraSpace: CGFloat
+                    if extraSpacingIndexes.contains(globalIndex) {
+                        extraSpace = 110
+                    } else {
+                        extraSpace = 11 // space between digits
                     }
-
-                    let digitStr = String(char)
-                    let digitSize = digitSizes[index]
-
-                    // Apply white background (space before and after each digit)
-                    let digitRect = CGRect(x: currentX - innerDigitSpacing / 2, y: digitY, width: digitSize.width + innerDigitSpacing, height: digitHeight)
-                    context.setFillColor(UIColor.white.cgColor)
-                    context.fill(digitRect)
-
-                    // Draw digit centered in rect
-                    let digitDrawX = currentX
-                    let digitDrawRect = CGRect(x: digitDrawX, y: digitY, width: digitSize.width, height: digitHeight)
-                    (digitStr as NSString).draw(in: digitDrawRect, withAttributes: attributes)
-
-                    currentX += digitSize.width + innerDigitSpacing
+                    digitX = backgroundRect.maxX + extraSpace
                 }
+
+                digitX += 12  // spacing between groups
+                digitIndex = groupEnd
             }
+        } else {
+            // fallback: draw red "No barcode" text at the bottom
+            let fallbackText = item.barcodeValue.isEmpty ? "No barcode value" : "Barcode generation failed"
+            print("🚫 Fallback text will be drawn: \(fallbackText)")
+            let fallbackFont = UIFont.systemFont(ofSize: 32, weight: .semibold)
+            let fallbackAttributes: [NSAttributedString.Key: Any] = [
+                .font: fallbackFont,
+                .foregroundColor: UIColor.red
+            ]
+            let fallbackSize = (fallbackText as NSString).size(withAttributes: fallbackAttributes)
+            let fallbackX = (labelWidth - fallbackSize.width) / 2
+            let fallbackY = labelHeight - fallbackSize.height - padding
+            let fallbackRect = CGRect(x: fallbackX, y: fallbackY, width: fallbackSize.width, height: fallbackSize.height)
+            (fallbackText as NSString).draw(in: fallbackRect, withAttributes: fallbackAttributes)
         }
 
-        let image = UIGraphicsGetImageFromCurrentImageContext()?.withRenderingMode(.alwaysOriginal)
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        var finalImage: UIImage? = nil
+        if let image = image, let cgImage = image.cgImage {
+            finalImage = UIImage(cgImage: cgImage)
+        }
         UIGraphicsEndImageContext()
-        return image
+        print("🏁 Finished generating label image for: \(item.name)")
+        return finalImage
     }
     
     private func generateBarcode(from string: String) -> UIImage? {
@@ -175,12 +185,32 @@ class ItemLabelPrintHelper {
         filter.setValue(data, forKey: "inputMessage")
         filter.setValue(0, forKey: "inputQuietSpace")
 
-        if let outputImage = filter.outputImage {
-            let scaleX = 3.0
-            let scaleY = 2.0  // updated from 3.0 to 2.0
-            let transformedImage = outputImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-            return UIImage(ciImage: transformedImage)
+        guard let outputImage = filter.outputImage else { return nil }
+
+        // Scale factors
+        let scaleX: CGFloat = 4.0
+        let scaleY: CGFloat = 4.0
+
+        let transformedImage = outputImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+
+        // Render into a UIImage context with no interpolation
+        let extent = transformedImage.extent.integral
+        let size = CGSize(width: extent.width, height: extent.height)
+
+        let rendererFormat = UIGraphicsImageRendererFormat()
+        rendererFormat.scale = 1
+        rendererFormat.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: rendererFormat)
+
+        let uiImage = renderer.image { context in
+            let cgContext = context.cgContext
+            let ciContext = CIContext()
+            if let cgImage = ciContext.createCGImage(transformedImage, from: extent) {
+                cgContext.interpolationQuality = .none
+                cgContext.draw(cgImage, in: CGRect(origin: .zero, size: size))
+            }
         }
-        return nil
+
+        return uiImage
     }
 }
