@@ -613,11 +613,12 @@ struct FullScreenPicker<T: Identifiable & Equatable>: View {
     let onSelect: (T?) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var searchText: String = ""
 
     var body: some View {
         List {
             Section {
-                ForEach(items) { item in
+                ForEach(items.filter { searchText.isEmpty || label($0).localizedCaseInsensitiveContains(searchText) }) { item in
                     Button {
                         onSelect(item)
                         dismiss()
@@ -635,6 +636,7 @@ struct FullScreenPicker<T: Identifiable & Equatable>: View {
                 }
             }
         }
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
         .listStyle(.insetGrouped)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)

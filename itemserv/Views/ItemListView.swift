@@ -10,8 +10,7 @@ struct ItemListView: View {
     @Query private var boxTypes: [BoxType]
     @State private var searchText = ""
     enum SortOrder: String, CaseIterable, Identifiable {
-        // most recently added or updated
-        case recent = "Recent"
+        case recent = "Recent"  // most recently added or updated
         case aToZ = "A → Z"
         case zToA = "Z → A"
 
@@ -348,9 +347,6 @@ private var contentView: some View {
         }
     }
 }
-
-// Duplicate declarations removed.
-
 
 private func deleteItems(at offsets: IndexSet) {
     for index in offsets {
