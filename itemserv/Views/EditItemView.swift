@@ -151,11 +151,12 @@ struct EditItemView: View {
         .navigationTitle("Edit Item")
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Edit Item")
+                Text("✏️ Edit Item")
                     .font(.headline)
+                    .foregroundColor(.primary)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
+                Button {
                     if item.barcodeValue.trimmingCharacters(in: .whitespaces).isEmpty {
                         item.barcodeValue = generateRandomEAN13()
                     }
@@ -167,6 +168,8 @@ struct EditItemView: View {
                     item.boxTypeRef = selectedBoxType
                     item.lastUpdated = Date()
                     dismiss()
+                } label: {
+                    Label("Done", systemImage: "checkmark")
                 }
             }
         }
@@ -309,7 +312,7 @@ struct EditItemView: View {
                         title: "Box Type",
                         items: boxTypes,
                         selected: selectedBoxType,
-                        label: { $0.boxTypeText },
+                        label: { "📦 \($0.boxTypeText)" },
                         onSelect: { selectedBoxType = $0 }
                     )
                     .navigationTitle("Box Type")
@@ -317,8 +320,10 @@ struct EditItemView: View {
                     .navigationBarBackButtonHidden(true)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Back") {
+                            Button {
                                 activePicker = nil
+                            } label: {
+                                Label("Back", systemImage: "chevron.backward")
                             }
                         }
                     }
@@ -431,6 +436,8 @@ struct EditItemView: View {
                             onSelectCamera: { pendingSourceType = .camera }
                         )
                     }
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: selectedImage)
                 }
