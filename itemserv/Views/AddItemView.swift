@@ -173,7 +173,20 @@ public struct AddItemView: View {
                     }
                 }
             }
-            .overlay(saveToastOverlay)
+            .overlay(alignment: .top) {
+                if showSaveToast {
+                    Text("Item saved!")
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(10)
+                        .shadow(radius: 5)
+                        .padding(.top, 20)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1)
+                }
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showSaveToast)
             .overlay(loadingOverlay)
             .animation(.easeInOut(duration: 0.25), value: isLoadingLookup)
             .alert("Lookup Failed", isPresented: $lookupFailed) {
@@ -316,20 +329,6 @@ private extension AddItemView {
         .scrollContentBackground(.hidden)
     }
 
-
-    var saveToastOverlay: some View {
-        Group {
-            if showSaveToast {
-                Text("Item saved!")
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(10)
-                    .shadow(radius: 5)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.3), value: showSaveToast)
-    }
 }
 
 // MARK: - Sections
