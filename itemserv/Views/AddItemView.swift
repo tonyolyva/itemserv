@@ -69,88 +69,82 @@ public struct AddItemView: View {
                 itemInfoSection()
 
                 // Category Picker
-                Button(action: {
-                    activePicker = .category
-                }) {
-                    HStack {
-                        Text("Category")
-                        Spacer()
-                        Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Category")
+                    Spacer()
+                    Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .category
+                })
 
                 // Room Picker
-                Button(action: {
-                    activePicker = .room
-                }) {
-                    HStack {
-                        Text("Room")
-                        Spacer()
-                        Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Room")
+                    Spacer()
+                    Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .room
+                })
 
                 // Sector Picker
-                Button(action: {
-                    activePicker = .sector
-                }) {
-                    HStack {
-                        Text("Sector")
-                        Spacer()
-                        Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Sector")
+                    Spacer()
+                    Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .sector
+                })
 
                 // Shelf Picker
-                Button(action: {
-                    activePicker = .shelf
-                }) {
-                    HStack {
-                        Text("Shelf")
-                        Spacer()
-                        Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Shelf")
+                    Spacer()
+                    Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .shelf
+                })
 
                 // Box Name Picker
-                Button(action: {
-                    activePicker = .boxName
-                }) {
-                    HStack {
-                        Text("Box Name")
-                        Spacer()
-                        Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Box Name")
+                    Spacer()
+                    Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .boxName
+                })
 
                 // Box Type Picker
-                Button(action: {
-                    activePicker = .boxType
-                }) {
-                    HStack {
-                        Text("Box Type")
-                        Spacer()
-                        Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                HStack {
+                    Text("Box Type")
+                    Spacer()
+                    Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    activePicker = .boxType
+                })
 
                 Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
                     PhotoSourcePickerView(
@@ -206,7 +200,7 @@ public struct AddItemView: View {
                 pendingSourceType = nil
             }
             // Full-screen custom picker
-            .sheet(item: $activePicker) { picker in
+            .fullScreenCover(item: $activePicker) { picker in
                 NavigationStack {
                     switch picker {
                     case .category:
