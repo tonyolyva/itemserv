@@ -380,9 +380,15 @@ private extension AddItemView {
                         .autocorrectionDisabled(true)
                         .textFieldStyle(.roundedBorder)
                     Button(action: {
-                        isShowingScanner = true
+                        let impact = UIImpactFeedbackGenerator(style: .medium)
+                        impact.impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isShowingScanner = true
+                        }
                     }) {
                         Image(systemName: "barcode.viewfinder")
+                            .scaleEffect(isShowingScanner ? 1.2 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: isShowingScanner)
                     }
                 }
             }
