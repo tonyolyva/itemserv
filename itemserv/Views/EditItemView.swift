@@ -339,7 +339,11 @@ struct EditItemView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
                         Button(action: {
-                            isShowingScanner = true
+                            let impact = UIImpactFeedbackGenerator(style: .medium)
+                            impact.impactOccurred()
+                            withAnimation {
+                                isShowingScanner = true
+                            }
                         }) {
                             Image(systemName: "barcode.viewfinder")
                         }
@@ -415,6 +419,8 @@ struct EditItemView: View {
                             .frame(height: 200)
                             .cornerRadius(12)
                             .padding(.bottom, 8)
+                            .transition(.opacity)
+                            .animation(.easeInOut(duration: 0.3), value: selectedImage)
                     }
                 }
 
@@ -435,6 +441,13 @@ struct EditItemView: View {
     private var itemNameSection: some View {
         Section(header: Text("Item Name")) {
             TextField("Name", text: $item.name)
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    // no-op for now; AddItemView uses scrollTo
+                }
+            }
         }
     }
     
