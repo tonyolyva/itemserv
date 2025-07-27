@@ -198,12 +198,14 @@ public struct AddItemView: View {
                     })
 
                     Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
-                        PhotoSourcePickerView(
-                            onSelectLibrary: { pendingSourceType = .photoLibrary },
-                            onSelectCamera: { pendingSourceType = .camera }
-                        )
+                        VStack {
+                            PhotoSourcePickerView(
+                                onSelectLibrary: { pendingSourceType = .photoLibrary },
+                                onSelectCamera: { pendingSourceType = .camera }
+                            )
+                        }
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: selectedImage)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: showImagePicker)
                     }
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets())
