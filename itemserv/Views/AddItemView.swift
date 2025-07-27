@@ -69,82 +69,88 @@ public struct AddItemView: View {
                 itemInfoSection()
 
                 // Category Picker
-                HStack {
-                    Text("Category")
-                    Spacer()
-                    Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .category
+                }) {
+                    HStack {
+                        Text("Category")
+                        Spacer()
+                        Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 // Room Picker
-                HStack {
-                    Text("Room")
-                    Spacer()
-                    Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .room
+                }) {
+                    HStack {
+                        Text("Room")
+                        Spacer()
+                        Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 // Sector Picker
-                HStack {
-                    Text("Sector")
-                    Spacer()
-                    Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .sector
+                }) {
+                    HStack {
+                        Text("Sector")
+                        Spacer()
+                        Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 // Shelf Picker
-                HStack {
-                    Text("Shelf")
-                    Spacer()
-                    Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .shelf
+                }) {
+                    HStack {
+                        Text("Shelf")
+                        Spacer()
+                        Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 // Box Name Picker
-                HStack {
-                    Text("Box Name")
-                    Spacer()
-                    Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .boxName
+                }) {
+                    HStack {
+                        Text("Box Name")
+                        Spacer()
+                        Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 // Box Type Picker
-                HStack {
-                    Text("Box Type")
-                    Spacer()
-                    Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button(action: {
                     activePicker = .boxType
+                }) {
+                    HStack {
+                        Text("Box Type")
+                        Spacer()
+                        Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .buttonStyle(PlainButtonStyle())
 
                 Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
                     PhotoSourcePickerView(
