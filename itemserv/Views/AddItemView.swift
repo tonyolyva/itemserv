@@ -65,99 +65,158 @@ public struct AddItemView: View {
     private var contentBody: some View {
         let scannerSheet: some View = BarcodeScannerView(completion: handleScannedBarcode)
         return NavigationStack {
-            Form {
-                itemInfoSection()
+            ScrollViewReader { proxy in
+                Form {
+                    // --- itemInfoSection, but need to add .id("name") to correct section
+                    Group {
+                        if let selectedImage {
+                            Image(uiImage: selectedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
+                                .cornerRadius(12)
+                                .padding(.bottom, 8)
+                                .transition(.opacity)
+                                .animation(.easeInOut(duration: 0.35), value: selectedImage)
+                        }
+                        Section(header: Text("ITEM NAME").font(.subheadline).foregroundStyle(.secondary)) {
+                            TextField("Name", text: $item.name)
+                                .focused($nameFieldFocused)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        .textCase(nil)
+                        .listRowInsets(EdgeInsets())
+                        .id("name")
 
-                // Category Picker
-                HStack {
-                    Text("Category")
-                    Spacer()
-                    Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .category
-                })
+                        Section(header: Text("ITEM DESCRIPTION").font(.subheadline).foregroundStyle(.secondary)) {
+                            TextField("Description", text: $item.itemDescription)
+                                .focused($nameFieldFocused)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        .textCase(nil)
+                        .listRowInsets(EdgeInsets())
 
-                // Room Picker
-                HStack {
-                    Text("Room")
-                    Spacer()
-                    Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .room
-                })
+                        Section(header: Text("BARCODE").font(.subheadline).foregroundStyle(.secondary)) {
+                            HStack {
+                                TextField("Barcode", text: $item.barcodeValue)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .textFieldStyle(.roundedBorder)
+                                Button(action: {
+                                    let impact = UIImpactFeedbackGenerator(style: .medium)
+                                    impact.impactOccurred()
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isShowingScanner = true
+                                    }
+                                }) {
+                                    Image(systemName: "barcode.viewfinder")
+                                        .scaleEffect(isShowingScanner ? 1.2 : 1.0)
+                                        .animation(.easeInOut(duration: 0.2), value: isShowingScanner)
+                                }
+                            }
+                        }
+                        .textCase(nil)
+                        .listRowInsets(EdgeInsets())
+                    }
 
-                // Sector Picker
-                HStack {
-                    Text("Sector")
-                    Spacer()
-                    Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .sector
-                })
+                    // Category Picker
+                    HStack {
+                        Text("Category")
+                        Spacer()
+                        Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .category
+                    })
 
-                // Shelf Picker
-                HStack {
-                    Text("Shelf")
-                    Spacer()
-                    Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .shelf
-                })
+                    // Room Picker
+                    HStack {
+                        Text("Room")
+                        Spacer()
+                        Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .room
+                    })
 
-                // Box Name Picker
-                HStack {
-                    Text("Box Name")
-                    Spacer()
-                    Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .boxName
-                })
+                    // Sector Picker
+                    HStack {
+                        Text("Sector")
+                        Spacer()
+                        Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .sector
+                    })
 
-                // Box Type Picker
-                HStack {
-                    Text("Box Type")
-                    Spacer()
-                    Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-                .highPriorityGesture(TapGesture().onEnded {
-                    activePicker = .boxType
-                })
+                    // Shelf Picker
+                    HStack {
+                        Text("Shelf")
+                        Spacer()
+                        Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .shelf
+                    })
 
-                Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
-                    PhotoSourcePickerView(
-                        onSelectLibrary: { pendingSourceType = .photoLibrary },
-                        onSelectCamera: { pendingSourceType = .camera }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: selectedImage)
+                    // Box Name Picker
+                    HStack {
+                        Text("Box Name")
+                        Spacer()
+                        Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .boxName
+                    })
+
+                    // Box Type Picker
+                    HStack {
+                        Text("Box Type")
+                        Spacer()
+                        Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        activePicker = .boxType
+                    })
+
+                    Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
+                        PhotoSourcePickerView(
+                            onSelectLibrary: { pendingSourceType = .photoLibrary },
+                            onSelectCamera: { pendingSourceType = .camera }
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: selectedImage)
+                    }
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
                 }
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets())
+                .scrollContentBackground(.hidden)
+                .onChange(of: scrollTarget) { target in
+                    guard let target = target else { return }
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        proxy.scrollTo(target, anchor: .top)
+                    }
+                    scrollTarget = nil
+                }
             }
-            .scrollContentBackground(.hidden)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -346,55 +405,8 @@ private extension AddItemView {
 // MARK: - Sections
 private extension AddItemView {
     func itemInfoSection() -> some View {
-        Group {
-            if let selectedImage {
-                Image(uiImage: selectedImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 200)
-                    .cornerRadius(12)
-                    .padding(.bottom, 8)
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.35), value: selectedImage)
-            }
-            Section(header: Text("ITEM NAME").font(.subheadline).foregroundStyle(.secondary)) {
-                TextField("Name", text: $item.name)
-                    .focused($nameFieldFocused)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .textCase(nil)
-            .listRowInsets(EdgeInsets())
-
-            Section(header: Text("ITEM DESCRIPTION").font(.subheadline).foregroundStyle(.secondary)) {
-                TextField("Description", text: $item.itemDescription)
-                    .focused($nameFieldFocused)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .textCase(nil)
-            .listRowInsets(EdgeInsets())
-
-            Section(header: Text("BARCODE").font(.subheadline).foregroundStyle(.secondary)) {
-                HStack {
-                    TextField("Barcode", text: $item.barcodeValue)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .textFieldStyle(.roundedBorder)
-                    Button(action: {
-                        let impact = UIImpactFeedbackGenerator(style: .medium)
-                        impact.impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isShowingScanner = true
-                        }
-                    }) {
-                        Image(systemName: "barcode.viewfinder")
-                            .scaleEffect(isShowingScanner ? 1.2 : 1.0)
-                            .animation(.easeInOut(duration: 0.2), value: isShowingScanner)
-                    }
-                }
-            }
-            .textCase(nil)
-            .listRowInsets(EdgeInsets())
-        }
+        // Not used, see contentBody for new implementation.
+        EmptyView()
     }
 }
 
@@ -451,7 +463,12 @@ private extension AddItemView {
         tempSelectedBoxNameID = item.boxNameRef?.persistentModelID
         tempSelectedBoxTypeID = item.boxTypeRef?.persistentModelID
 
-        nameFieldFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.5)) {
+                scrollTarget = "name"
+                nameFieldFocused = true
+            }
+        }
     }
 
     func hideKeyboard() {
