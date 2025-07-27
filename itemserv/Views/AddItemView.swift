@@ -170,8 +170,8 @@ public struct AddItemView: View {
                         .font(.headline)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        saveItem()
+                    Button(action: saveItem) {
+                        Label("Save", systemImage: "checkmark.circle")
                     }
                 }
             }
