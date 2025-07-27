@@ -168,8 +168,10 @@ public struct AddItemView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Label("Add Item", systemImage: "plus.circle")
+                    Text("Add Item")
                         .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: saveItem) {
@@ -352,6 +354,8 @@ private extension AddItemView {
                     .frame(height: 200)
                     .cornerRadius(12)
                     .padding(.bottom, 8)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.35), value: selectedImage)
             }
             Section(header: Text("ITEM NAME").font(.subheadline).foregroundStyle(.secondary)) {
                 TextField("Name", text: $item.name)
