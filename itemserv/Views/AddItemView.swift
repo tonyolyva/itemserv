@@ -161,8 +161,10 @@ public struct AddItemView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Back") {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        Label("Back", systemImage: "chevron.backward")
                     }
                 }
                 ToolbarItem(placement: .principal) {
