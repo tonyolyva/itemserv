@@ -295,7 +295,7 @@ public struct AddItemView: View {
                             title: "Box Type",
                             items: boxTypes,
                             selected: boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID }),
-                            label: { $0.boxTypeText },
+                            label: { "📦 \($0.boxTypeText)" },
                             onSelect: { tempSelectedBoxTypeID = $0?.persistentModelID }
                         )
                     }
