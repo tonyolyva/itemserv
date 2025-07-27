@@ -166,7 +166,7 @@ public struct AddItemView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("Add Item")
+                    Label("Add Item", systemImage: "plus.circle")
                         .font(.headline)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
