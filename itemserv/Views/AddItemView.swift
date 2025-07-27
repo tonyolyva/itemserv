@@ -536,7 +536,9 @@ private extension AddItemView {
             modelContext.insert(item)
         }
         try? modelContext.save()
-        showSaveToast = true
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            showSaveToast = true
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             showSaveToast = false
             handleImageAndDismiss()
