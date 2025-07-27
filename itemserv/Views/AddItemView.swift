@@ -199,6 +199,7 @@ public struct AddItemView: View {
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(sourceType: imageSourceType, selectedImage: $selectedImage)
             }
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: showImagePicker)
             .onChange(of: selectedImage) {
@@ -208,6 +209,7 @@ public struct AddItemView: View {
             .sheet(isPresented: $isShowingScanner) {
                 scannerSheet
             }
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: isShowingScanner)
             .onChange(of: pendingSourceType) {
