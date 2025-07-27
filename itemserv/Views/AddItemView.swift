@@ -344,7 +344,7 @@ private extension AddItemView {
                     .cornerRadius(12)
                     .padding(.bottom, 8)
             }
-            Section(header: Text("ITEM NAME").font(.caption).foregroundStyle(.secondary)) {
+            Section(header: Text("ITEM NAME").font(.subheadline).foregroundStyle(.secondary)) {
                 TextField("Name", text: $item.name)
                     .focused($nameFieldFocused)
                     .textFieldStyle(.roundedBorder)
@@ -352,7 +352,7 @@ private extension AddItemView {
             .textCase(nil)
             .listRowInsets(EdgeInsets())
 
-            Section(header: Text("ITEM DESCRIPTION").font(.caption).foregroundStyle(.secondary)) {
+            Section(header: Text("ITEM DESCRIPTION").font(.subheadline).foregroundStyle(.secondary)) {
                 TextField("Description", text: $item.itemDescription)
                     .focused($nameFieldFocused)
                     .textFieldStyle(.roundedBorder)
@@ -360,7 +360,7 @@ private extension AddItemView {
             .textCase(nil)
             .listRowInsets(EdgeInsets())
 
-            Section(header: Text("BARCODE").font(.caption).foregroundStyle(.secondary)) {
+            Section(header: Text("BARCODE").font(.subheadline).foregroundStyle(.secondary)) {
                 HStack {
                     TextField("Barcode", text: $item.barcodeValue)
                         .textInputAutocapitalization(.never)
