@@ -154,6 +154,8 @@ public struct AddItemView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: selectedImage)
                 }
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
             }
             .scrollContentBackground(.hidden)
             .navigationBarTitleDisplayMode(.inline)
@@ -281,7 +283,7 @@ public struct AddItemView: View {
                             label: { boxName in
                                 let count = boxName.items?.count ?? 0
                                 let isUnboxed = boxName.boxNameText == "Unboxed"
-                                let spacing = isUnboxed ? "    " : "                   "
+                                let spacing = isUnboxed ? "       " : "                      "
                                 return count > 0
                                     ? "📦 \(boxName.boxNameText)\(spacing)✨ \(count)"
                                     : "📦 \(boxName.boxNameText)"
