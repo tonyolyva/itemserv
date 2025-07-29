@@ -9,20 +9,17 @@ public struct AddItemView: View {
     @State private var showSaveToast: Bool = false
     @State private var isShowingScanner = false
     @State private var isLoadingLookup = false
-    
+
     @State private var tempSelectedCategoryID: PersistentIdentifier?
-    @State private var tempSelectedRoomID: PersistentIdentifier?
-    @State private var tempSelectedSectorID: PersistentIdentifier?
-    @State private var tempSelectedShelfID: PersistentIdentifier?
-    @State private var tempSelectedBoxNameID: PersistentIdentifier?
-    @State private var tempSelectedBoxTypeID: PersistentIdentifier?
-    // Full-screen picker
-    @State private var activePicker: ActivePicker?
+    @State private var tempSelectedBoxID: PersistentIdentifier?
+    // Picker sheet states
+    @State private var showCategoryPicker = false
+    @State private var showBoxPicker = false
 
     // Lookup error/cancel state
     @State private var lookupFailed = false
     @State private var didCancelLookup = false
-    
+
     @State private var showImagePicker = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var pendingSourceType: UIImagePickerController.SourceType?
@@ -35,24 +32,14 @@ public struct AddItemView: View {
     @State private var rooms: [Room] = []
     @State private var sectors: [Sector] = []
     @State private var shelves: [Shelf] = []
-    @State private var boxNames: [BoxName] = []
+    @State private var boxNames: [Box] = []
     @State private var boxTypes: [BoxType] = []
 
-    // Picker enum for full-screen selection
-    private enum ActivePicker: Identifiable {
-        case category, room, sector, shelf, boxName, boxType
+    // Barcode manual entry toggle
+    @State private var showManualBarcodeEntry: Bool = false
 
-        var id: String {
-            switch self {
-            case .category: return "category"
-            case .room: return "room"
-            case .sector: return "sector"
-            case .shelf: return "shelf"
-            case .boxName: return "boxName"
-            case .boxType: return "boxType"
-            }
-        }
-    }
+    // Picker enum for full-screen selection
+    // (Removed ActivePicker since we now use independent sheet states)
 
     init(item: Item) {
         self._item = Bindable(wrappedValue: item)
@@ -63,12 +50,22 @@ public struct AddItemView: View {
     }
 
     private var contentBody: some View {
-        let scannerSheet: some View = BarcodeScannerView(completion: handleScannedBarcode)
+        var scannerSheet: some View {
+            BarcodeScannerView(completion: handleScannedBarcode)
+        }
+
+        // Compute selected names for pickers
+        let selectedCategory = categories.first { $0.persistentModelID == tempSelectedCategoryID }
+        let selectedCategoryName = selectedCategory?.categoryNameWrapped ?? "None"
+        let selectedBox = boxNames.first { $0.persistentModelID == tempSelectedBoxID }
+        let selectedBoxName = selectedBox?.numberOrName ?? "None"
+
         return NavigationStack {
             ScrollViewReader { proxy in
-                Form {
-                    // --- itemInfoSection, but need to add .id("name") to correct section
-                    Group {
+//                VStack(spacing: -8) {
+                VStack(spacing: -8) {
+                    VStack(spacing: 0) {
+                        // --- itemInfoSection content ---
                         if let selectedImage {
                             Image(uiImage: selectedImage)
                                 .resizable()
@@ -79,138 +76,224 @@ public struct AddItemView: View {
                                 .transition(.opacity)
                                 .animation(.easeInOut(duration: 0.35), value: selectedImage)
                         }
-                        Section(header: Text("ITEM NAME").font(.subheadline).foregroundStyle(.secondary)) {
+                        // 1. Name
+                        VStack(alignment: .leading, spacing: 4) { // Control spacing between a title ITEM NAME and Name field
+//                            VStack(alignment: .leading, spacing: 8) { // Control spacing between a title ITEM NAME and Name field
+                            Text("ITEM NAME")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                             TextField("Name", text: $item.name)
                                 .focused($nameFieldFocused)
                                 .textFieldStyle(.roundedBorder)
                         }
-                        .textCase(nil)
-                        .listRowInsets(EdgeInsets())
+                        .padding(.bottom, 12) // Control spacing between name field and a title ITEM DESCRIPTION
+                        .padding(.horizontal)
                         .id("name")
 
-                        Section(header: Text("ITEM DESCRIPTION").font(.subheadline).foregroundStyle(.secondary)) {
+                        // 2. Description
+                        VStack(alignment: .leading, spacing: 4) { // Control spacing between a title ITEM DESCRIPTION and Description field
+//                            VStack(alignment: .leading, spacing: 8) { // Control spacing between a title ITEM NAME and Name field
+                            Text("ITEM DESCRIPTION")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+//                                .padding(.bottom, -6) // Reduce gap before Category
+//                                .padding(.bottom, 4) // Control spacing between a title ITEM DESCRIPTION and Description field
                             TextField("Description", text: $item.itemDescription)
                                 .focused($nameFieldFocused)
                                 .textFieldStyle(.roundedBorder)
                         }
-                        .textCase(nil)
-                        .listRowInsets(EdgeInsets())
+                        .padding(.bottom, 12) // Control spacing between Description field and Category
+                        .padding(.horizontal)
+                    }
 
-                        Section(header: Text("BARCODE").font(.subheadline).foregroundStyle(.secondary)) {
-                            HStack {
-                                TextField("Barcode", text: $item.barcodeValue)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled(true)
-                                    .textFieldStyle(.roundedBorder)
-                                Button(action: {
-                                    let impact = UIImpactFeedbackGenerator(style: .medium)
-                                    impact.impactOccurred()
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        isShowingScanner = true
-                                    }
-                                }) {
-                                    Image(systemName: "barcode.viewfinder")
-                                        .scaleEffect(isShowingScanner ? 1.2 : 1.0)
-                                        .animation(.easeInOut(duration: 0.2), value: isShowingScanner)
-                                }
-                            }
+                    // 3. Category Picker Button
+                    Button {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            showCategoryPicker = true
                         }
-                        .textCase(nil)
-                        .listRowInsets(EdgeInsets())
+                    } label: {
+                        HStack {
+                            Text("Category")
+                            Spacer()
+                            Text(selectedCategoryName)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal)
+                        .frame(height: 44)
+                        .background(Color(.systemBackground))
                     }
-
-                    // Category Picker
-                    HStack {
-                        Text("Category")
-                        Spacer()
-                        Text(categories.first(where: { $0.persistentModelID == tempSelectedCategoryID })?.categoryNameWrapped ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .category
-                    })
-
-                    // Room Picker
-                    HStack {
-                        Text("Room")
-                        Spacer()
-                        Text(rooms.first(where: { $0.persistentModelID == tempSelectedRoomID })?.roomName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .room
-                    })
-
-                    // Sector Picker
-                    HStack {
-                        Text("Sector")
-                        Spacer()
-                        Text(sectors.first(where: { $0.persistentModelID == tempSelectedSectorID })?.sectorName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .sector
-                    })
-
-                    // Shelf Picker
-                    HStack {
-                        Text("Shelf")
-                        Spacer()
-                        Text(shelves.first(where: { $0.persistentModelID == tempSelectedShelfID })?.shelfName ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .shelf
-                    })
-
-                    // Box Name Picker
-                    HStack {
-                        Text("Box Name")
-                        Spacer()
-                        Text(boxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID })?.boxNameText ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .boxName
-                    })
-
-                    // Box Type Picker
-                    HStack {
-                        Text("Box Type")
-                        Spacer()
-                        Text(boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID })?.boxTypeText ?? "None")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(TapGesture().onEnded {
-                        activePicker = .boxType
-                    })
-
-                    Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
-                        VStack {
-                            PhotoSourcePickerView(
-                                onSelectLibrary: { pendingSourceType = .photoLibrary },
-                                onSelectCamera: { pendingSourceType = .camera }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showCategoryPicker) {
+                        NavigationStack {
+                            FullScreenPicker(
+                                title: "Category",
+                                items: categories,
+                                selected: categories.first(where: { $0.persistentModelID == tempSelectedCategoryID }),
+                                label: { $0.categoryNameWrapped },
+                                onSelect: { tempSelectedCategoryID = $0?.persistentModelID }
                             )
                         }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: showImagePicker)
                     }
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets())
+                    .padding(.bottom, 12) // Control spacing between Category nnd Box name
+
+                    // 4. Box Picker Button
+                    Button {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            showBoxPicker = true
+                        }
+                    } label: {
+                        HStack {
+                            Text("Box Name")
+                            Spacer()
+                            Text(selectedBoxName)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal)
+                        .frame(height: 44)
+                        .background(Color(.systemBackground))
+                    }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showBoxPicker) {
+                        NavigationStack {
+                            let groupedBoxes = Dictionary(grouping: boxNames, by: \.numberOrName)
+                            let dedupedBoxes = groupedBoxes.compactMap { $0.value.first }
+                            let uniqueBoxes = dedupedBoxes.sorted {
+                                if $0.numberOrName == "Unboxed" { return true }
+                                if $1.numberOrName == "Unboxed" { return false }
+                                if let lhsInt = Int($0.numberOrName), let rhsInt = Int($1.numberOrName) {
+                                    return lhsInt < rhsInt
+                                }
+                                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending
+                            }
+                            FullScreenPicker(
+                                title: "Box Name",
+                                items: uniqueBoxes,
+                                selected: uniqueBoxes.first(where: { $0.persistentModelID == tempSelectedBoxID }),
+                                label: { box in
+                                    let count = box.items?.count ?? 0
+                                    return count > 0
+                                        ? "📦 \(box.numberOrName)  ✨ \(count)"
+                                        : "📦 \(box.numberOrName)"
+                                },
+                                onSelect: { tempSelectedBoxID = $0?.persistentModelID }
+                            )
+                        }
+                    }
+                    .padding(.bottom, 12) // Control spacing between Box name and a title ADD PHOTO
+
+                    // 5. Photo Library / Camera
+                    Form {
+                        Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
+                            VStack {
+                                PhotoSourcePickerView(
+                                    onSelectLibrary: { pendingSourceType = .photoLibrary },
+                                    onSelectCamera: { pendingSourceType = .camera }
+                                )
+                            }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0.25), value: showImagePicker)
+                        }
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                    }
+                    .scrollContentBackground(.hidden)
+
+                    // 6. Barcode Scanner Button & Manual Entry Inline
+                    // 6. Barcode Scanner Button & Manual Entry Inline
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            // Scan Barcode Button (Compact)
+                            Button {
+                                let impact = UIImpactFeedbackGenerator(style: .medium)
+                                impact.impactOccurred()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isShowingScanner = true
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "barcode.viewfinder")
+                                    Text("Barcode")
+                                }
+                                .frame(maxWidth: 120) // Compact width for Scan button
+                                .frame(height: 44)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(8)
+                            }
+
+                            // Enter Barcode Manually Button
+                            if !showManualBarcodeEntry {
+                                Button {
+                                    withAnimation {
+                                        showManualBarcodeEntry = true
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "keyboard")
+                                        Text("Enter Manually")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 44)
+                                    .background(Color(.secondarySystemBackground))
+                                    .cornerRadius(8)
+                                }
+                            } else {
+//                                TextField("Enter Barcode", text: $item.barcodeValue)
+//                                    .textInputAutocapitalization(.never)
+//                                    .autocorrectionDisabled(true)
+//                                    .textFieldStyle(.roundedBorder)
+//                                    .padding(.horizontal, 4)
+//                                    .overlay(
+//                                        RoundedRectangle(cornerRadius: 6)
+//                                            .stroke(Color(.separator), lineWidth: 0.5)
+//                                    )
+//                                    .frame(height: 44)
+//                                    .transition(.opacity)
+                                TextField("Enter Barcode", text: $item.barcodeValue)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .padding(.horizontal, 10)
+                                    .frame(height: 44)
+                                    .background(Color(.black))
+                                    // Overlay for top & bottom borders
+                                    .overlay(
+                                        VStack(spacing: 0) {
+                                            Rectangle()
+//                                                .fill(Color.gray.opacity(0.6))
+                                                .fill(Color.gray.opacity(0.3))
+//                                                .frame(height: 2) // Top border (thicker)
+                                                .frame(height: 6) // Top border (thicker)
+                                            Spacer()
+                                            Rectangle()
+//                                                .fill(Color.gray.opacity(0.6))
+                                                .fill(Color.gray.opacity(0.3))
+//                                                .frame(height: 2) // Bottom border (thicker)
+                                                .frame(height: 6) // Bottom border (thicker)
+                                        }
+                                    )
+                                    // Overlay for thin left/right borders
+                                    .overlay(
+                                        HStack {
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.3))
+                                                .frame(width: 0.5) // Left border (thin)
+                                            Spacer()
+                                            Rectangle()
+                                                .fill(Color.gray.opacity(0.3))
+                                                .frame(width: 0.5) // Right border (thin)
+                                        }
+                                    )
+                                    .cornerRadius(6)
+                                    .foregroundColor(.white)
+                                    .transition(.opacity)
+                                
+                                
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                 }
-                .scrollContentBackground(.hidden)
                 .onChange(of: scrollTarget) { target in
                     guard let target = target else { return }
                     withAnimation(.easeInOut(duration: 0.5)) {
@@ -285,87 +368,7 @@ public struct AddItemView: View {
                 showImagePicker = true
                 pendingSourceType = nil
             }
-            // Full-screen custom picker
-            .fullScreenCover(item: $activePicker) { picker in
-                NavigationStack {
-                    switch picker {
-                    case .category:
-                        FullScreenPicker(
-                            title: "Category",
-                            items: categories,
-                            selected: categories.first(where: { $0.persistentModelID == tempSelectedCategoryID }),
-                            label: { $0.categoryNameWrapped },
-                            onSelect: { tempSelectedCategoryID = $0?.persistentModelID }
-                        )
-                    case .room:
-                        FullScreenPicker(
-                            title: "Room",
-                            items: rooms,
-                            selected: rooms.first(where: { $0.persistentModelID == tempSelectedRoomID }),
-                            label: { $0.roomName },
-                            onSelect: { tempSelectedRoomID = $0?.persistentModelID }
-                        )
-                    case .sector:
-                        FullScreenPicker(
-                            title: "Sector",
-                            items: sectors,
-                            selected: sectors.first(where: { $0.persistentModelID == tempSelectedSectorID }),
-                            label: { $0.sectorName },
-                            onSelect: { tempSelectedSectorID = $0?.persistentModelID }
-                        )
-                    case .shelf:
-                        FullScreenPicker(
-                            title: "Shelf",
-                            items: shelves,
-                            selected: shelves.first(where: { $0.persistentModelID == tempSelectedShelfID }),
-                            label: { $0.shelfName },
-                            onSelect: { tempSelectedShelfID = $0?.persistentModelID }
-                        )
-                    case .boxName:
-                        let uniqueBoxNames = Dictionary(grouping: boxNames, by: \.boxNameText)
-                            .compactMap { $0.value.first }
-                            .sorted { lhs, rhs in
-                                let lhsText = lhs.boxNameText
-                                let rhsText = rhs.boxNameText
-
-                                if lhsText == "Unboxed" {
-                                    return true
-                                } else if rhsText == "Unboxed" {
-                                    return false
-                                }
-
-                                if let lhsInt = Int(lhsText), let rhsInt = Int(rhsText) {
-                                    return lhsInt < rhsInt
-                                }
-
-                                return lhsText.localizedCompare(rhsText) == .orderedAscending
-                            }
-
-                        FullScreenPicker(
-                            title: "Box Name",
-                            items: uniqueBoxNames,
-                            selected: uniqueBoxNames.first(where: { $0.persistentModelID == tempSelectedBoxNameID }),
-                            label: { boxName in
-                                let count = boxName.items?.count ?? 0
-                                let isUnboxed = boxName.boxNameText == "Unboxed"
-                                let spacing = isUnboxed ? "       " : "                      "
-                                return count > 0
-                                    ? "📦 \(boxName.boxNameText)\(spacing)✨ \(count)"
-                                    : "📦 \(boxName.boxNameText)"
-                            },
-                            onSelect: { tempSelectedBoxNameID = $0?.persistentModelID }
-                        )
-                    case .boxType:
-                        FullScreenPicker(
-                            title: "Box Type",
-                            items: boxTypes,
-                            selected: boxTypes.first(where: { $0.persistentModelID == tempSelectedBoxTypeID }),
-                            label: { "📦 \($0.boxTypeText)" },
-                            onSelect: { tempSelectedBoxTypeID = $0?.persistentModelID }
-                        )
-                    }
-                }
-            }
+            // (Removed old picker presentation using activePicker)
         }
     }
 
@@ -425,52 +428,13 @@ private extension AddItemView {
             .compactMap { $0.value.first }
             .sorted { $0.categoryNameWrapped < $1.categoryNameWrapped }
 
-        // Fetch and deduplicate rooms
-        let fetchedRooms = (try? modelContext.fetch(FetchDescriptor<Room>(sortBy: [SortDescriptor(\.roomName, order: .forward)]))) ?? []
-        rooms = Dictionary(grouping: fetchedRooms, by: \.roomName)
-            .compactMap { $0.value.first }
-            .sorted { $0.roomName < $1.roomName }
-
-        // Fetch and deduplicate sectors
-        let fetchedSectors = (try? modelContext.fetch(FetchDescriptor<Sector>(sortBy: [SortDescriptor(\.sectorName, order: .forward)]))) ?? []
-        sectors = Dictionary(grouping: fetchedSectors, by: \.sectorName)
-            .compactMap { $0.value.first }
-            .sorted { $0.sectorName < $1.sectorName }
-
-        // Fetch and deduplicate shelves
-        let fetchedShelves = (try? modelContext.fetch(FetchDescriptor<Shelf>(sortBy: [SortDescriptor(\.shelfName, order: .forward)]))) ?? []
-        shelves = Dictionary(grouping: fetchedShelves, by: \.shelfName)
-            .compactMap { $0.value.first }
-            .sorted { $0.shelfName < $1.shelfName }
-
-        // Box names (existing logic preserved)
-        let fetchedBoxNames = (try? modelContext.fetch(FetchDescriptor<BoxName>(sortBy: [SortDescriptor(\.boxNameText, order: .forward)]))) ?? []
-        if let unboxed = fetchedBoxNames.first(where: { $0.boxNameText.lowercased() == "unboxed" }) {
-            boxNames = [unboxed] + fetchedBoxNames.filter { $0.persistentModelID != unboxed.persistentModelID }
-        } else {
-            boxNames = fetchedBoxNames
-        }
-
-        // Fetch and deduplicate box types
-        let fetchedBoxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>(sortBy: [SortDescriptor(\.boxTypeText, order: .forward)]))) ?? []
-        boxTypes = Dictionary(grouping: fetchedBoxTypes, by: \.boxTypeText)
-            .compactMap { $0.value.first }
-            .sorted { $0.boxTypeText < $1.boxTypeText }
+        // Fetch boxes
+        let fetchedBoxes = (try? modelContext.fetch(FetchDescriptor<Box>(sortBy: [SortDescriptor(\.numberOrName, order: .forward)]))) ?? []
+        boxNames = fetchedBoxes
 
         tempSelectedCategoryID = item.category?.persistentModelID
-        tempSelectedRoomID = item.room?.persistentModelID
-        tempSelectedSectorID = item.sector?.persistentModelID
-        tempSelectedSectorID = item.sector?.persistentModelID
-        tempSelectedShelfID = item.shelf?.persistentModelID
-        tempSelectedBoxNameID = item.boxNameRef?.persistentModelID
-        tempSelectedBoxTypeID = item.boxTypeRef?.persistentModelID
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeOut(duration: 0.5)) {
-                scrollTarget = "name"
-                nameFieldFocused = true
-            }
-        }
+        tempSelectedBoxID = item.box?.persistentModelID
+        // Removed initial scroll/focus to avoid interfering with picker tap gestures
     }
 
     func hideKeyboard() {
@@ -484,24 +448,8 @@ private extension AddItemView {
         tempSelectedCategoryID = id
     }
 
-    func updateSelectedRoom(id: PersistentIdentifier?) {
-        tempSelectedRoomID = id
-    }
-
-    func updateSelectedSector(id: PersistentIdentifier?) {
-        tempSelectedSectorID = id
-    }
-
-    func updateSelectedShelf(id: PersistentIdentifier?) {
-        tempSelectedShelfID = id
-    }
-
-    func updateSelectedBoxName(id: PersistentIdentifier?) {
-        tempSelectedBoxNameID = id
-    }
-
-    func updateSelectedBoxType(id: PersistentIdentifier?) {
-        tempSelectedBoxTypeID = id
+    func updateSelectedBox(id: PersistentIdentifier?) {
+        tempSelectedBoxID = id
     }
 
     func saveItem() {
@@ -511,29 +459,10 @@ private extension AddItemView {
         if let selectedID = tempSelectedCategoryID {
             item.category = categories.first(where: { $0.persistentModelID == selectedID })
         }
-        
-        if let selectedID = tempSelectedRoomID {
-            item.room = rooms.first(where: { $0.persistentModelID == selectedID })
+        if let selectedID = tempSelectedBoxID {
+            item.box = boxNames.first(where: { $0.persistentModelID == selectedID })
         }
-        
-        if let selectedID = tempSelectedSectorID {
-            item.sector = sectors.first(where: { $0.persistentModelID == selectedID })
-        }
-        
-        if let selectedID = tempSelectedShelfID {
-            item.shelf = shelves.first(where: { $0.persistentModelID == selectedID })
-        }
-        
-        if let selectedID = tempSelectedBoxNameID {
-            item.boxNameRef = boxNames.first(where: { $0.persistentModelID == selectedID })
-        } else {
-            item.boxNameRef = boxNames.first(where: { $0.boxNameText == "Unboxed" })
-        }
-        
-        if let selectedID = tempSelectedBoxTypeID {
-            item.boxTypeRef = boxTypes.first(where: { $0.persistentModelID == selectedID })
-        }
-        
+
         if item.modelContext == nil {
             modelContext.insert(item)
         }
@@ -689,3 +618,5 @@ struct FullScreenPicker<T: Identifiable & Equatable>: View {
         }
     }
 }
+
+// (Removed pickerView(for:) helper and ActivePicker enum, now handled by individual sheet states)

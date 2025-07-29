@@ -11,7 +11,7 @@ struct AppTabView: View {
                 ItemListView()
             }
             .tabItem {
-                Label("Items", systemImage: "archivebox")
+                Label("Items", systemImage: "sparkles")
             }
             .tag(0)
             
@@ -24,12 +24,20 @@ struct AppTabView: View {
             .tag(1)
             
             NavigationStack {
+                LocationView()
+            }
+            .tabItem {
+                Label("Location", systemImage: "mappin")
+            }
+            .tag(2)
+            
+            NavigationStack {
                 AdminPanelView()
             }
             .tabItem {
                 Label("Admin", systemImage: "gearshape")
             }
-            .tag(2)
+            .tag(3)
         }
         .modelContainer(sharedModelContainer)
         .tint(.blue)

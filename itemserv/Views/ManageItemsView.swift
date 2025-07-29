@@ -1,4 +1,5 @@
 import Foundation
+import CloudKit
 // Returns the device model identifier (e.g., "iPhone15,2") for more informative export metadata.
 func getDeviceModelIdentifier() -> String {
     var systemInfo = utsname()
@@ -75,7 +76,7 @@ struct ManageItemsView: View {
                             let rooms = try? modelContext.fetch(FetchDescriptor<Room>())
                             let sectors = try? modelContext.fetch(FetchDescriptor<Sector>())
                             let shelves = try? modelContext.fetch(FetchDescriptor<Shelf>())
-                            let boxNames = try? modelContext.fetch(FetchDescriptor<BoxName>())
+                            let boxNames = try? modelContext.fetch(FetchDescriptor<Box>())
                             let boxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>())
                             
                             for category in categories ?? [] where (category.categoryName?.trimmed().isEmpty ?? true) {
@@ -90,8 +91,8 @@ struct ManageItemsView: View {
                             for shelf in shelves ?? [] where shelf.shelfName.trimmed().isEmpty {
                                 modelContext.delete(shelf)
                             }
-                            for boxName in boxNames ?? [] where boxName.boxNameText.trimmed().isEmpty {
-                                modelContext.delete(boxName)
+                            for box in boxNames ?? [] where box.numberOrName.trimmed().isEmpty {
+                                modelContext.delete(box)
                             }
                             for boxType in boxTypes ?? [] where boxType.boxTypeText.trimmed().isEmpty {
                                 modelContext.delete(boxType)
@@ -127,7 +128,7 @@ struct ManageItemsView: View {
                             let rooms = try? modelContext.fetch(FetchDescriptor<Room>())
                             let sectors = try? modelContext.fetch(FetchDescriptor<Sector>())
                             let shelves = try? modelContext.fetch(FetchDescriptor<Shelf>())
-                            let boxNames = try? modelContext.fetch(FetchDescriptor<BoxName>())
+                            let boxNames = try? modelContext.fetch(FetchDescriptor<Box>())
                             let boxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>())
                             
                             for item in allItems ?? [] {
@@ -145,8 +146,8 @@ struct ManageItemsView: View {
                             for shelf in shelves ?? [] {
                                 modelContext.delete(shelf)
                             }
-                            for boxName in boxNames ?? [] {
-                                modelContext.delete(boxName)
+                            for box in boxNames ?? [] {
+                                modelContext.delete(box)
                             }
                             for boxType in boxTypes ?? [] {
                                 modelContext.delete(boxType)
@@ -298,10 +299,10 @@ struct ManageItemsView: View {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
-                                            if let name = obj["boxNameText"] {
-                                                let existing = try modelContext.fetch(FetchDescriptor<BoxName>(predicate: #Predicate { $0.boxNameText == name }))
+                                            if let name = obj["numberOrName"] {
+                                                let existing = try modelContext.fetch(FetchDescriptor<Box>(predicate: #Predicate { $0.numberOrName == name }))
                                                 if existing.isEmpty {
-                                                    modelContext.insert(BoxName(boxNameText: name))
+                                                    modelContext.insert(Box(numberOrName: name))
                                                 }
                                             }
                                         }
@@ -462,34 +463,38 @@ struct ManageItemsView: View {
                         item.imageData = try? Data(contentsOf: imagePath)
                     }
 
-                    // room
-                    if let roomName = raw["room"],
-                       let room = try? Room.fetchOne(name: roomName, context: modelContext) {
-                        item.room = room
+                    // Prepare related objects
+                    var room: Room?
+                    if let roomName = raw["room"] {
+                        room = try? Room.fetchOne(name: roomName, context: modelContext)
                     }
 
-                    // sector
-                    if let sectorName = raw["sector"],
-                       let sector = try? Sector.fetchOne(name: sectorName, context: modelContext) {
-                        item.sector = sector
+                    var sector: Sector?
+                    if let sectorName = raw["sector"] {
+                        sector = try? Sector.fetchOne(name: sectorName, context: modelContext)
                     }
 
-                    // shelf
-                    if let shelfName = raw["shelf"],
-                       let shelf = try? Shelf.fetchOne(name: shelfName, context: modelContext) {
-                        item.shelf = shelf
+                    var shelf: Shelf?
+                    if let shelfName = raw["shelf"] {
+                        shelf = try? Shelf.fetchOne(name: shelfName, context: modelContext)
                     }
 
-                    // boxName
+                    var boxType: BoxType?
+                    if let boxTypeName = raw["boxType"] {
+                        boxType = try? BoxType.fetchOne(name: boxTypeName, context: modelContext)
+                    }
+
                     if let boxName = raw["boxName"],
-                       let box = try? BoxName.fetchOne(name: boxName, context: modelContext) {
-                        item.boxNameRef = box
-                    }
-
-                    // boxType
-                    if let boxTypeName = raw["boxType"],
-                       let boxType = try? BoxType.fetchOne(name: boxTypeName, context: modelContext) {
-                        item.boxTypeRef = boxType
+                       let box = try? Box.fetchOne(name: boxName, context: modelContext) {
+                        item.box = box
+                    } else {
+                        let newBox = Box(numberOrName: raw["boxName"] ?? "")
+                        newBox.room = room
+                        newBox.sector = sector
+                        newBox.shelf = shelf
+                        newBox.boxType = boxType
+                        modelContext.insert(newBox)
+                        item.box = newBox
                     }
 
                     // categoryName
@@ -540,9 +545,9 @@ extension Shelf {
     }
 }
 
-extension BoxName {
-    static func fetchOne(name: String, context: ModelContext) throws -> BoxName? {
-        let descriptor = FetchDescriptor<BoxName>(predicate: #Predicate { $0.boxNameText == name })
+extension Box {
+    static func fetchOne(name: String, context: ModelContext) throws -> Box? {
+        let descriptor = FetchDescriptor<Box>(predicate: #Predicate { $0.numberOrName == name })
         return try context.fetch(descriptor).first
     }
 }
@@ -582,11 +587,11 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
             orderedDict["categoryName"] = item.category?.categoryName ?? ""
             orderedDict["barcodeValue"] = item.barcodeValue
             orderedDict["imageFilename"] = imageName
-            orderedDict["room"] = item.room?.roomName ?? ""
-            orderedDict["sector"] = item.sector?.sectorName ?? ""
-            orderedDict["shelf"] = item.shelf?.shelfName ?? ""
-            orderedDict["boxName"] = item.boxNameRef?.boxNameText ?? ""
-            orderedDict["boxType"] = item.boxTypeRef?.boxTypeText ?? ""
+            orderedDict["room"] = item.box?.room?.roomName ?? ""
+            orderedDict["sector"] = item.box?.sector?.sectorName ?? ""
+            orderedDict["shelf"] = item.box?.shelf?.shelfName ?? ""
+            orderedDict["boxName"] = item.box?.numberOrName ?? ""
+            orderedDict["boxType"] = item.box?.boxType?.boxTypeText ?? ""
 
             // Don't wrap with .map { ($0.key, $0.value) } anymore
             jsonArray.append(orderedDict.reduce(into: [String: String]()) { $0[$1.key] = $1.value })
@@ -618,11 +623,11 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
                 item.category?.categoryName ?? "",
                 item.barcodeValue,
                 item.barcodeValue + ".jpg",
-                item.room?.roomName ?? "",
-                item.sector?.sectorName ?? "",
-                item.shelf?.shelfName ?? "",
-                item.boxNameRef?.boxNameText ?? "",
-                item.boxTypeRef?.boxTypeText ?? ""
+                item.box?.room?.roomName ?? "",
+                item.box?.sector?.sectorName ?? "",
+                item.box?.shelf?.shelfName ?? "",
+                item.box?.numberOrName ?? "",
+                item.box?.boxType?.boxTypeText ?? ""
             ].map { $0.replacingOccurrences(of: "\t", with: " ") }
             tsvRows.append(tsvValues.joined(separator: "\t"))
         }
@@ -634,7 +639,7 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         let rooms = (try? modelContext.fetch(FetchDescriptor<Room>()).map { $0.roomName }) ?? []
         let sectors = (try? modelContext.fetch(FetchDescriptor<Sector>()).map { $0.sectorName }) ?? []
         let shelves = (try? modelContext.fetch(FetchDescriptor<Shelf>()).map { $0.shelfName }) ?? []
-        let boxNames = (try? modelContext.fetch(FetchDescriptor<BoxName>()).map { $0.boxNameText }) ?? []
+        let boxNames = (try? modelContext.fetch(FetchDescriptor<Box>()).map { $0.numberOrName }) ?? []
         let boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>()).map { $0.boxTypeText }) ?? []
 
         // Manual meta.json export with fixed key order and formatting

@@ -5,7 +5,7 @@ import SwiftData
 class Sector: Identifiable {
     @Attribute var id: UUID = UUID()
     @Attribute(.externalStorage) var sectorName: String = ""
-    @Relationship(inverse: \Item.sector) var items: [Item]?
+    @Relationship(inverse: \Box.sector) var items: [Box]?
 
     init(sectorName: String) {
         self.sectorName = sectorName

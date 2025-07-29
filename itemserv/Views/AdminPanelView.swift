@@ -12,7 +12,7 @@ struct AdminPanelView: View {
                 NavigationLink("Manage Rooms", destination: ManageRoomsView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Sectors", destination: ManageSectorsView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Shelves", destination: ManageShelvesView().modelContext(sharedModelContainer.mainContext))
-                NavigationLink("Manage Box Names", destination: ManageBoxNamesView().modelContext(sharedModelContainer.mainContext))
+                NavigationLink("Manage Boxes", destination: ManageBoxesView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Box Types", destination: ManageBoxTypesView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Items", destination: ManageItemsView().modelContext(sharedModelContainer.mainContext))
 //                NavigationLink("Share Collection", destination: ShareCollectionView())

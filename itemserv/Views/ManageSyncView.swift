@@ -269,11 +269,7 @@ struct ManageSyncView: View {
                                 migrated.dateAdded = old.dateAdded
                                 migrated.barcodeValue = old.barcodeValue
                                 migrated.category = old.category
-                                migrated.room = old.room
-                                migrated.sector = old.sector
-                                migrated.shelf = old.shelf
-                                migrated.boxNameRef = old.boxNameRef
-                                migrated.boxTypeRef = old.boxTypeRef
+                                migrated.box = old.box
                             }
                             try context.save()
                             debugOutput.append("💾 context.save() succeeded after migration.")

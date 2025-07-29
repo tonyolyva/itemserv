@@ -18,7 +18,7 @@ struct ItemDetailView: View {
                         .font(.body)
                 }
 
-                // Status info section (added/updated)
+                // Status info (added/updated)
                 Text(relativeUpdateText(for: item))
                     .font(.subheadline)
                     .foregroundColor(.blue)
@@ -160,18 +160,18 @@ private func relativeUpdateText(for item: Item) -> String {
 
     private var locationAndBoxSection: some View {
         Group {
-            if let shelf = item.shelf {
+            if let box = item.box {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Location:")
                         .fontWeight(.bold)
-                    Text("\(item.room?.roomName ?? "No Room") / \(item.sector?.sectorName ?? "No Sector") / \(shelf.shelfName)")
+                    Text("\(box.room?.roomName ?? "No Room") / \(box.sector?.sectorName ?? "No Sector") / \(box.shelf?.shelfName ?? "No Shelf")")
                         .font(.subheadline)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Box:")
                         .fontWeight(.bold)
-                    Text("\(item.boxNameRef?.boxNameText ?? "Unboxed") — \(item.boxTypeRef?.boxTypeText ?? "No Box Type")")
+                    Text("\(box.numberOrName) — \(box.boxType?.boxTypeText ?? "No Box Type")")
                         .font(.subheadline)
                 }
             }

@@ -9,7 +9,7 @@ import SwiftUI
 
 
 struct LabelPreviewView: View {
-    var box: BoxName
+    var box: Box
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -45,7 +45,7 @@ struct LabelPreviewView: View {
         }
     }
     // Print label using the fixed-resolution label renderer
-    func printBoxLabel(box: BoxName) {
+    func printBoxLabel(box: Box) {
         let image = LabelCanvasRenderer.renderLabel(box: box)
         let printInfo = UIPrintInfo(dictionary: nil)
         printInfo.outputType = .photo
@@ -74,7 +74,7 @@ struct LabelCanvasRenderer {
         return CGSize(width: width.rounded(), height: height.rounded())
     }
 
-    static func renderLabel(box: BoxName) -> UIImage {
+    static func renderLabel(box: Box) -> UIImage {
         let size = labelSizePixels
 
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -89,20 +89,20 @@ struct LabelCanvasRenderer {
 
             let maxBoxWidth = size.width * 0.40
             var fontSize: CGFloat = labelHeight * 0.48
-            if box.boxNameText.count >= 3 {
+            if box.numberOrName.count >= 3 {
                 var testFont = UIFont.boldSystemFont(ofSize: fontSize)
-                var testSize = (box.boxNameText as NSString).size(withAttributes: [.font: testFont])
+                var testSize = (box.numberOrName as NSString).size(withAttributes: [.font: testFont])
                 while testSize.width > maxBoxWidth && fontSize > 24 {
                     fontSize -= 4
                     testFont = UIFont.boldSystemFont(ofSize: fontSize)
-                    testSize = (box.boxNameText as NSString).size(withAttributes: [.font: testFont])
+                    testSize = (box.numberOrName as NSString).size(withAttributes: [.font: testFont])
                 }
             }
             let boxNumberFont = UIFont.boldSystemFont(ofSize: fontSize)
-            let numberSize = (box.boxNameText as NSString).size(withAttributes: [.font: boxNumberFont])
+            let numberSize = (box.numberOrName as NSString).size(withAttributes: [.font: boxNumberFont])
 
             // --- Category calculation ---
-            let sortedItems = box.items?.sorted(by: { $0.name < $1.name }) ?? []
+           let sortedItems = (box.items ?? []).sorted(by: { $0.name < $1.name })
             let itemCountsByCategory = Dictionary(grouping: sortedItems, by: { $0.category?.categoryName ?? "Uncategorized" })
                 .mapValues { $0.count }
 
@@ -129,7 +129,7 @@ struct LabelCanvasRenderer {
             // --- End Category drawing ---
 
             let numberAttributes: [NSAttributedString.Key: Any] = [.font: boxNumberFont, .foregroundColor: UIColor.black]
-            let numberString = NSAttributedString(string: box.boxNameText, attributes: numberAttributes)
+            let numberString = NSAttributedString(string: box.numberOrName, attributes: numberAttributes)
             let leftColumnX: CGFloat = padding - 8
             let barcodeHeight = labelHeight * 0.26
             let boxTextRect = CGRect(
@@ -171,7 +171,7 @@ struct LabelCanvasRenderer {
                 }
             }
 
-            if let barcode = LabelRenderer.generateBarcode(from: box.boxNameText) {
+            if let barcode = LabelRenderer.generateBarcode(from: box.numberOrName) {
                 let barcodeWidth = size.width * 0.42
                 let barcodeRect = CGRect(
                     x: 0,
@@ -210,7 +210,7 @@ enum LabelRenderer {
         return nil
     }
 
-    static func sharePDF(box: BoxName) {
+    static func sharePDF(box: Box) {
         let image = LabelCanvasRenderer.renderLabel(box: box)
         let size = LabelCanvasRenderer.labelSizePixels
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: size))
@@ -219,7 +219,7 @@ enum LabelRenderer {
             image.draw(in: CGRect(origin: .zero, size: size))
         }
 
-        let filename = "BoxLabel-\(box.boxNameText).pdf"
+        let filename = "BoxLabel-\(box.numberOrName).pdf"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try? data.write(to: url)
 

@@ -2,18 +2,18 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-struct ManageBoxNamesView: View {
+struct ManageBoxesView: View {
     @Environment(\.modelContext) private var context
-    @Query private var boxNames: [BoxName]
-    @State private var boxNameToDelete: BoxName?
+    @Query private var boxes: [Box]
+    @State private var boxToDelete: Box?
     @State private var sortAscending: Bool = true
     @State private var searchText: String = ""
     @State private var isImportingFile = false
     @State private var exportURL: URL?
     @State private var isShowingExportSheet = false
 
-    var filteredBoxNames: [BoxName] {
-        let names = boxNames.map { ($0, $0.boxNameText.lowercased()) }
+    var filteredBoxes: [Box] {
+        let names = boxes.map { ($0, $0.numberOrName.lowercased()) }
         let sorted = sortAscending
             ? names.sorted { $0.1 < $1.1 }
             : names.sorted { $0.1 > $1.1 }
@@ -22,23 +22,23 @@ struct ManageBoxNamesView: View {
         if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return results
         } else {
-            return results.filter { $0.boxNameText.localizedCaseInsensitiveContains(searchText) }
+            return results.filter { $0.numberOrName.localizedCaseInsensitiveContains(searchText) }
         }
     }
 
-    private func addBoxName() {
-        let trimmedNames = Set(boxNames.map { $0.boxNameText.trimmingCharacters(in: .whitespaces) })
+    private func addBox() {
+        let trimmedNames = Set(boxes.map { $0.numberOrName.trimmingCharacters(in: .whitespaces) })
 
         if !trimmedNames.contains("Unboxed") {
-            let unboxed = BoxName(boxNameText: "Unboxed")
+            let unboxed = Box(numberOrName: "Unboxed")
             context.insert(unboxed)
             try? context.save()
             return
         }
 
         let usedNumbers = Set(
-            boxNames.compactMap {
-                Int($0.boxNameText.trimmingCharacters(in: .whitespaces))
+            boxes.compactMap {
+                Int($0.numberOrName.trimmingCharacters(in: .whitespaces))
             }
         )
 
@@ -47,7 +47,7 @@ struct ManageBoxNamesView: View {
             nextNumber += 1
         }
 
-        let newBox = BoxName(boxNameText: "\(nextNumber)")
+        let newBox = Box(numberOrName: "\(nextNumber)")
         context.insert(newBox)
         try? context.save()
     }
@@ -90,25 +90,25 @@ struct ManageBoxNamesView: View {
                 }
                 Spacer()
                 Button("Export") {
-                    exportBoxNames()
+                    exportBoxes()
                 }
             }
             .padding(.horizontal)
 
             List {
                 Section(header: Text("Box Names")) {
-                    ForEach(filteredBoxNames, id: \.self) { boxName in
+                    ForEach(filteredBoxes, id: \.self) { box in
                         HStack {
-                            if boxName.boxNameText == "Unboxed" {
+                            if box.numberOrName == "Unboxed" {
                                 Label("Unboxed", systemImage: "tray")
                                     .labelStyle(.titleAndIcon)
                             } else {
-                                Text(boxName.boxNameText)
+                                Text(box.numberOrName)
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                boxNameToDelete = boxName
+                                boxToDelete = box
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -119,32 +119,32 @@ struct ManageBoxNamesView: View {
 
                 Section(header: Text("Add New Box Name")) {
                     Button("Add Next Box") {
-                        addBoxName()
+                        addBox()
                     }
                     .buttonStyle(.borderedProminent)
                     .padding(.vertical, 4)
                 }
             }
             .listStyle(.insetGrouped)
-            .animation(.easeInOut(duration: 0.3), value: filteredBoxNames)
-            .alert("Delete Box Name?", isPresented: .constant(boxNameToDelete != nil), presenting: boxNameToDelete) { boxName in
+            .animation(.easeInOut(duration: 0.3), value: filteredBoxes)
+            .alert("Delete Box Name?", isPresented: .constant(boxToDelete != nil), presenting: boxToDelete) { box in
                 Button("Delete", role: .destructive) {
-                    if let index = boxNames.firstIndex(of: boxName) {
-                        context.delete(boxNames[index])
+                    if let index = boxes.firstIndex(of: box) {
+                        context.delete(boxes[index])
                         try? context.save()
                     }
-                    boxNameToDelete = nil
+                    boxToDelete = nil
                 }
                 Button("Cancel", role: .cancel) {
-                    boxNameToDelete = nil
+                    boxToDelete = nil
                 }
-            } message: { boxName in
-                Text("Are you sure you want to delete \"\(boxName.boxNameText)\"?")
+            } message: { box in
+                Text("Are you sure you want to delete \"\(box.numberOrName)\"?")
             }
             .fileImporter(isPresented: $isImportingFile, allowedContentTypes: [.commaSeparatedText]) { result in
                 switch result {
                 case .success(let url):
-                    importBoxNames(from: url)
+                    importBoxes(from: url)
                 case .failure(let error):
                     print("Import failed: \(error.localizedDescription)")
                 }
@@ -176,14 +176,14 @@ struct ManageBoxNamesView: View {
         }
     }
 
-    private func exportBoxNames() {
+    private func exportBoxes() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmm"
         let timestamp = formatter.string(from: Date())
         let filename = "box_names_\(timestamp).csv"
 
-        let content = boxNames
-            .map { $0.boxNameText }
+        let content = boxes
+            .map { $0.numberOrName }
             .joined(separator: "\n")
 
         do {
@@ -196,7 +196,7 @@ struct ManageBoxNamesView: View {
         }
     }
 
-    private func importBoxNames(from url: URL) {
+    private func importBoxes(from url: URL) {
         if url.startAccessingSecurityScopedResource() {
             defer { url.stopAccessingSecurityScopedResource() }
 
@@ -206,12 +206,12 @@ struct ManageBoxNamesView: View {
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
 
-                for box in boxNames {
+                for box in boxes {
                     context.delete(box)
                 }
 
                 for name in lines where !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let newBox = BoxName(boxNameText: name)
+                    let newBox = Box(numberOrName: name)
                     context.insert(newBox)
                 }
 

@@ -6,7 +6,7 @@ class BoxType: Identifiable {
     @Attribute var id: UUID = UUID()
     @Attribute(.externalStorage) var boxTypeText: String = ""
 
-    @Relationship(inverse: \Item.boxTypeRef) var items: [Item]?
+    @Relationship(inverse: \Box.boxType) var boxes: [Box]?
 
     var isEmpty: Bool {
         boxTypeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

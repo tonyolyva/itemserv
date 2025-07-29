@@ -9,12 +9,11 @@ let sharedModelContainer: ModelContainer = {
         Room.self,
         Sector.self,
         Shelf.self,
-        BoxName.self,
+        Box.self,
         BoxType.self
     ])
     
     let config = ModelConfiguration(
-        "zonev3",
         schema: schema,
         cloudKitDatabase: .private("iCloud.com.tonyyutaka.itemserv3")
     )
@@ -144,12 +143,12 @@ struct itemservApp: App {
                         emptyShelves.forEach { context.delete($0) }
                         print("🧹 Deleted \(emptyShelves.count) empty shelves on app launch.")
 
-                        // Clean up empty BoxNames
-                        let emptyBoxNames = try context.fetch(FetchDescriptor<BoxName>()).filter {
-                            $0.boxNameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        // Clean up empty Boxes
+                        let emptyBoxes = try context.fetch(FetchDescriptor<Box>()).filter {
+                            $0.numberOrName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         }
-                        emptyBoxNames.forEach { context.delete($0) }
-                        print("🧹 Deleted \(emptyBoxNames.count) empty box names on app launch.")
+                        emptyBoxes.forEach { context.delete($0) }
+                        print("🧹 Deleted \(emptyBoxes.count) empty boxes on app launch.")
 
                         // Clean up empty BoxTypes
                         let emptyBoxTypes = try context.fetch(FetchDescriptor<BoxType>()).filter {

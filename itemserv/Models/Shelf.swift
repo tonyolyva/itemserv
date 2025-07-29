@@ -5,7 +5,7 @@ import SwiftData
 class Shelf: Identifiable {
     @Attribute var id: UUID = UUID()
     @Attribute(.externalStorage) var shelfName: String = ""
-    @Relationship(inverse: \Item.shelf) var items: [Item]?
+    @Relationship(inverse: \Box.shelf) var items: [Box]?
 
     init(shelfName: String) {
         self.shelfName = shelfName

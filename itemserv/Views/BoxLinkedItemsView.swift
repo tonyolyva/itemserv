@@ -5,17 +5,17 @@ import AudioToolbox
 struct BoxLinkedItemsView: View {
     @Namespace private var scrollAnchor
     @Environment(\.modelContext) private var context
-    @Query private var boxNames: [BoxName]
+    @Query private var boxes: [Box]
     
-    @State private var newBoxName: String = ""
+    @State private var newBox: String = ""
     @State private var searchText: String = ""
     @State private var sortAscending: Bool = true
-    @State private var boxNameToDelete: BoxName?
+    @State private var boxToDelete: Box?
     
-    @State private var expandedBoxes: [UUID: Bool] = [:]
+    @State private var expandedBoxes: [PersistentIdentifier: Bool] = [:]
     @State private var filterSelection: FilterSelection = .allBoxes
     @State private var isShowingScanner = false
-    @State private var scrollToBoxID: UUID?
+    @State private var scrollToBoxID: PersistentIdentifier?
     
     enum FilterSelection: String, CaseIterable, Identifiable {
         case allBoxes = "All Boxes"
@@ -26,13 +26,13 @@ struct BoxLinkedItemsView: View {
         var id: String { rawValue }
     }
     
-    private var sortedBoxNames: [BoxName] {
-        let unboxed = boxNames.first(where: { $0.boxNameText == "Unboxed" })
-        let numericBoxes = boxNames.filter { $0.boxNameText != "Unboxed" }
+    private var sortedBoxes: [Box] {
+        let unboxed = boxes.first(where: { $0.numberOrName == "Unboxed" })
+        let numericBoxes = boxes.filter { $0.numberOrName != "Unboxed" }
 
         let paired = numericBoxes.map { box in
-            let hashComponent = abs(box.boxNameText.hashValue % 1000)
-            let number = Int(box.boxNameText) ?? (Int.max - hashComponent)
+            let hashComponent = abs(box.numberOrName.hashValue % 1000)
+            let number = Int(box.numberOrName) ?? (Int.max - hashComponent)
             return (box, number)
         }
 
@@ -42,7 +42,7 @@ struct BoxLinkedItemsView: View {
 
         // Remove duplicate box names, preserving order
         var seen = Set<String>()
-        let deduped = sorted.filter { seen.insert($0.boxNameText).inserted }
+        let deduped = sorted.filter { seen.insert($0.numberOrName).inserted }
         if let unboxed = unboxed {
             return sortAscending ? [unboxed] + deduped : deduped + [unboxed]
         } else {
@@ -52,15 +52,15 @@ struct BoxLinkedItemsView: View {
     
     // MARK: - Virtual "Unboxed" Items (for future use)
     private var virtualUnboxedItems: [Item] {
-        boxNames.flatMap { $0.items?.filter { $0.boxNameRef?.boxNameText == "Unboxed" } ?? [] }
+        boxes.flatMap { ($0.items ?? []).filter { $0.box?.numberOrName == "Unboxed" } }
     }
-    
-    private var filteredBoxNames: [BoxName] {
+
+    private var filteredBoxes: [Box] {
         var seen = Set<String>()
-        var deduped = sortedBoxNames.filter { seen.insert($0.boxNameText).inserted }
+        var deduped = sortedBoxes.filter { seen.insert($0.numberOrName).inserted }
 
         if searchText.trimmed().isEmpty == false {
-            deduped = deduped.filter { $0.boxNameText.localizedCaseInsensitiveContains(searchText) }
+            deduped = deduped.filter { $0.numberOrName.localizedCaseInsensitiveContains(searchText) }
         }
 
         switch filterSelection {
@@ -68,7 +68,7 @@ struct BoxLinkedItemsView: View {
             break
         case .onlyUnboxed:
             deduped = []
-            if let realUnboxed = boxNames.first(where: { $0.boxNameText == "Unboxed" }) {
+            if let realUnboxed = boxes.first(where: { $0.numberOrName == "Unboxed" }) {
                 deduped.append(realUnboxed)
             }
         case .excludeEmptyBoxes:
@@ -76,18 +76,18 @@ struct BoxLinkedItemsView: View {
         case .emptyBoxesOnly:
             deduped = deduped.filter { ($0.items?.isEmpty ?? true) }
         }
-
         // Move "Unboxed" to the top if present
-        if let unboxedIndex = deduped.firstIndex(where: { $0.boxNameText == "Unboxed" }) {
+        if let unboxedIndex = deduped.firstIndex(where: { $0.numberOrName == "Unboxed" }) {
             let unboxed = deduped.remove(at: unboxedIndex)
             deduped.insert(unboxed, at: 0)
         }
-
         return deduped
     }
-    
+
     private var allBoxesExpanded: Bool {
-        filteredBoxNames.allSatisfy { expandedBoxes[$0.id, default: false] }
+        filteredBoxes.allSatisfy {
+            expandedBoxes[$0.persistentModelID, default: false]
+        }
     }
     
     private var contentView: some View {
@@ -96,11 +96,10 @@ struct BoxLinkedItemsView: View {
                 Text("Box Linked Items")
                     .font(.largeTitle.bold())
                     .padding(.top, 12)
-
                 // Search + Clear Button + Barcode Scanner
                 ZStack {
                     HStack {
-                        TextField("Search Box Names", text: $searchText)
+                        TextField("Search Boxes", text: $searchText)
                             .textFieldStyle(.roundedBorder)
                             .submitLabel(.done)
                             .onSubmit {
@@ -160,7 +159,7 @@ struct BoxLinkedItemsView: View {
                         if allBoxesExpanded {
                             expandedBoxes = [:]
                         } else {
-                            expandedBoxes = Dictionary(uniqueKeysWithValues: filteredBoxNames.map { ($0.id, true) })
+                            expandedBoxes = Dictionary(uniqueKeysWithValues: filteredBoxes.map { ($0.persistentModelID, true) })
                         }
                     }) {
                         Text(allBoxesExpanded ? "Collapse All" : "Expand All")
@@ -177,10 +176,10 @@ struct BoxLinkedItemsView: View {
 
                 ScrollViewReader { proxy in
                     List {
-                        ForEach(filteredBoxNames, id: \.self) { boxName in
+                        ForEach(filteredBoxes, id: \.persistentModelID) { box in
                             Section {
-                                if expandedBoxes[boxName.id, default: false] {
-                                    ForEach(boxName.items ?? []) { item in
+                                if expandedBoxes[box.persistentModelID, default: false] {
+                                    ForEach(box.items ?? []) { item in
                                         NavigationLink(destination: ItemDetailView(item: item)) {
                                             HStack {
                                                 if let data = item.imageData, let uiImage = UIImage(data: data) {
@@ -221,33 +220,33 @@ struct BoxLinkedItemsView: View {
                                 }
                             } header: {
                                 BoxHeaderView(
-                                    boxName: boxName,
-                                    isExpanded: expandedBoxes[boxName.id, default: false],
+                                    box: box,
+                                    isExpanded: expandedBoxes[box.persistentModelID, default: false],
                                     searchText: searchText,
                                     toggleAction: {
-                                        expandedBoxes[boxName.id, default: false].toggle()
+                                        expandedBoxes[box.persistentModelID, default: false].toggle()
                                     },
-                                    printAction: { printBoxLabel(box: boxName) }
+                                    printAction: { printBoxLabel(box: box) }
                                 )
                             }
-                            .id(boxName.id)
+                            .id(box.persistentModelID)
                         }
                     }
                     .listStyle(.plain)
-                    .animation(.easeInOut(duration: 0.4), value: filteredBoxNames)
-                    .alert("Delete Box Name?", isPresented: .constant(boxNameToDelete != nil), presenting: boxNameToDelete) { boxName in
+                    .animation(Animation.easeInOut(duration: 0.4), value: filteredBoxes.map { $0.persistentModelID })
+                    .alert("Delete Box?", isPresented: .constant(boxToDelete != nil), presenting: boxToDelete) { box in
                         Button("Delete", role: .destructive) {
                             withAnimation {
-                                context.delete(boxName)
+                                context.delete(box)
                                 try? context.save()
-                                boxNameToDelete = nil
+                                boxToDelete = nil
                             }
                         }
                         Button("Cancel", role: .cancel) {
-                            boxNameToDelete = nil
+                            boxToDelete = nil
                         }
-                    } message: { boxName in
-                        Text("Are you sure you want to delete the Box Name “\(boxName.boxNameText)”?")
+                    } message: { box in
+                        Text("Are you sure you want to delete the Box “\(box.numberOrName)”?")
                     }
                     .onChange(of: scrollToBoxID) { oldValue, newValue in
                         if let id = newValue {
@@ -260,17 +259,17 @@ struct BoxLinkedItemsView: View {
                 }
             }
         }
-        // Removed explicit .navigationTitle to let the in-view Text serve as the title
-        .sheet(isPresented: $isShowingScanner) {
-            BarcodeScannerView { scanned in
-                isShowingScanner = false
-                if let matchedBox = boxNames.first(where: { $0.boxNameText == scanned }) {
-                    expandedBoxes[matchedBox.id] = true
-                    scrollToBoxID = matchedBox.id
-                    AudioServicesPlaySystemSound(SystemSoundID(1103)) // play success beep
-                }
-            }
-        }
+      .sheet(isPresented: $isShowingScanner) {
+          BarcodeScannerView { scanned in
+              isShowingScanner = false
+              if let matchedBox = boxes.first(where: { $0.numberOrName == scanned }) {
+                  let boxID = matchedBox.persistentModelID
+                  expandedBoxes[boxID] = true
+                  scrollToBoxID = boxID
+                  AudioServicesPlaySystemSound(SystemSoundID(1103)) // play success beep
+              }
+          }
+      }
     }
 
     var body: some View {
@@ -280,10 +279,10 @@ struct BoxLinkedItemsView: View {
     }
     
     // MARK: - Actions
-    func addBoxName() {
+    func addBox() {
         withAnimation {
-            // 1. Extract numeric box numbers from existing BoxName entries
-            let existingNumbers = boxNames.compactMap { Int($0.boxNameText.trimmed()) }.sorted()
+            // 1. Extract numeric box numbers from existing Box entries
+            let existingNumbers = boxes.compactMap { Int($0.numberOrName.trimmed()) }.sorted()
             // 2. Find the smallest missing positive integer
             var nextNumber = 1
             for number in existingNumbers {
@@ -293,21 +292,21 @@ struct BoxLinkedItemsView: View {
                     break
                 }
             }
-            let newBoxNameText = "\(nextNumber)"
+            let newBoxText = "\(nextNumber)"
             // 3. Prevent duplicates (case insensitive, trimmed)
-            guard !boxNames.contains(where: { $0.boxNameText.trimmed().caseInsensitiveCompare(newBoxNameText) == .orderedSame }) else { return }
-            let newBox = BoxName(boxNameText: newBoxNameText)
-            context.insert(newBox)
+            guard !boxes.contains(where: { $0.numberOrName.trimmed().caseInsensitiveCompare(newBoxText) == .orderedSame }) else { return }
+            let newBoxObj = Box(numberOrName: newBoxText)
+            context.insert(newBoxObj)
             try? context.save()
-            newBoxName = ""
+            newBox = ""
         }
     }
 
-    func deleteBoxNames(at offsets: IndexSet) {
+    func deleteBoxes(at offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                let boxName = self.filteredBoxNames[index]
-                context.delete(boxName)
+                let box = self.filteredBoxes[index]
+                context.delete(box)
             }
             try? context.save()
         }
@@ -315,7 +314,7 @@ struct BoxLinkedItemsView: View {
 } // End of BoxLinkedItemsView struct
 
     // MARK: - Print Box Label
-    func printBoxLabel(box: BoxName) {
+    func printBoxLabel(box: Box) {
         let image = LabelCanvasRenderer.renderLabel(box: box)
 
         let printInfo = UIPrintInfo(dictionary: nil)
@@ -358,7 +357,7 @@ struct BoxLinkedItemsView: View {
         var body: some View {
             let thumbSize: CGFloat = 48
             let spacing: CGFloat = 4
-            let itemsWithImages = items.filter { $0.imageData != nil }
+        let itemsWithImages = items.filter { $0.imageData != nil }
 
             // Estimate room for thumbnails
             let badgeReserve: CGFloat = 40 // space for "+N" badge
@@ -397,7 +396,7 @@ struct BoxLinkedItemsView: View {
     }
 
     struct BoxHeaderView: View {
-        let boxName: BoxName
+        let box: Box
         let isExpanded: Bool
         let searchText: String
         let toggleAction: () -> Void
@@ -408,10 +407,10 @@ struct BoxLinkedItemsView: View {
                 HStack(alignment: .center, spacing: 6) {
                     Button(action: toggleAction) {
                         HStack(spacing: 6) {
-                            highlightedText(for: boxName.boxNameText, matching: searchText)
+                            highlightedText(for: box.numberOrName, matching: searchText)
                                 .font(.title3)
                                 .fontWeight(.semibold)
-                            Text("(\(boxName.items?.count ?? 0))")
+                            Text("(\(box.items?.count ?? 0))")
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                         }
@@ -423,7 +422,7 @@ struct BoxLinkedItemsView: View {
                     if !isExpanded {
                         Spacer(minLength: 8)
                         GeometryReader { geometry in
-                            ThumbnailLayoutView(items: boxName.items ?? [], totalWidth: geometry.size.width)
+                            ThumbnailLayoutView(items: box.items ?? [], totalWidth: geometry.size.width)
                         }
                         .frame(height: 48)
                     } else {

@@ -62,7 +62,7 @@ struct ItemListView: View {
             return searched
         case .room:
             if let room = selectedRoom {
-                return searched.filter { $0.room == room }
+                return searched.filter { $0.box?.room == room }
             }
         case .category:
             if let category = selectedCategory {
@@ -70,7 +70,7 @@ struct ItemListView: View {
             }
         case .boxType:
             if let boxType = selectedBoxType {
-                return searched.filter { $0.boxTypeRef == boxType }
+                return searched.filter { $0.box?.boxType == boxType }
             }
         case .clearAll:
             return searched

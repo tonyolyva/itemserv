@@ -5,7 +5,7 @@ import SwiftData
 class Room: Identifiable {
     @Attribute var id: UUID = UUID()
     @Attribute(.externalStorage) var roomName: String = ""
-    @Relationship(inverse: \Item.room) var items: [Item]?
+    @Relationship(inverse: \Box.room) var items: [Box]?
 
     init(roomName: String) {
         self.roomName = roomName

@@ -12,23 +12,14 @@ class Item {
     @Attribute var lastUpdated: Date = Date()
 
     @Relationship var category: Category?
-    @Relationship var room: Room?
-    @Relationship var sector: Sector?
-    @Relationship var shelf: Shelf?
-    @Relationship var boxNameRef: BoxName?
-    @Relationship var boxTypeRef: BoxType?
+    @Relationship var box: Box?
 
     var isEmpty: Bool {
         name.isEmpty &&
         itemDescription.isEmpty &&
         (imageData == nil || imageData?.isEmpty == true) &&
         barcodeValue.isEmpty &&
-        category == nil &&
-        room == nil &&
-        sector == nil &&
-        shelf == nil &&
-        boxNameRef == nil &&
-        boxTypeRef == nil
+        category == nil
     }
 
     init(
@@ -36,11 +27,7 @@ class Item {
         category: Category? = nil,
         itemDescription: String = "",
         imageData: Data? = nil,
-        room: Room? = nil,
-        sector: Sector? = nil,
-        shelf: Shelf? = nil,
-        boxNameRef: BoxName? = nil,
-        boxTypeRef: BoxType? = nil,
+        box: Box? = nil,
         dateAdded: Date = Date(),
         barcodeValue: String = ""
     ) {
@@ -49,11 +36,7 @@ class Item {
         self.category = category
         self.itemDescription = itemDescription
         self.imageData = imageData
-        self.room = room
-        self.sector = sector
-        self.shelf = shelf
-        self.boxNameRef = boxNameRef
-        self.boxTypeRef = boxTypeRef
+        self.box = box
         self.dateAdded = dateAdded
         self.barcodeValue = barcodeValue
         self.lastUpdated = Date()

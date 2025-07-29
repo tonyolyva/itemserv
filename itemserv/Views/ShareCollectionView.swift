@@ -6,12 +6,12 @@ import CoreData
 private func isItemEmpty(_ item: Item) -> Bool {
     item.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
     item.itemDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-    item.boxNameRef == nil &&
-    item.boxTypeRef == nil &&
-    item.room == nil &&
-    item.sector == nil &&
-    item.shelf == nil &&
-    item.category == nil
+    item.box == nil &&
+    item.category == nil &&
+    item.box?.boxType == nil &&
+    item.box?.room == nil &&
+    item.box?.sector == nil &&
+    item.box?.shelf == nil
 }
 
 struct ShareSnapshot {
@@ -20,21 +20,22 @@ struct ShareSnapshot {
     let rooms: [Room]
     let sectors: [Sector]
     let shelves: [Shelf]
-    let boxNames: [BoxName]
+    let boxes: [Box]
     let boxTypes: [BoxType]
 }
 
 func contextSnapshot(from context: ModelContext) throws -> ShareSnapshot {
     // Fetch all items, then filter out empty items before snapshot
-    let nonEmptyItems = try context.fetch(FetchDescriptor<Item>()).filter {
+    let allItems = try context.fetch(FetchDescriptor<Item>())
+    let nonEmptyItems = allItems.filter {
         !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
         !$0.itemDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-        $0.boxNameRef != nil ||
-        $0.boxTypeRef != nil ||
-        $0.room != nil ||
-        $0.sector != nil ||
-        $0.shelf != nil ||
-        $0.category != nil
+        $0.box != nil ||
+        $0.category != nil ||
+        $0.box?.boxType != nil ||
+        $0.box?.room != nil ||
+        $0.box?.sector != nil ||
+        $0.box?.shelf != nil
     }
 
     // Establish inverse relationships for shared records
@@ -42,20 +43,23 @@ func contextSnapshot(from context: ModelContext) throws -> ShareSnapshot {
         if let category = item.category {
             category.items?.append(item)
         }
-        if let room = item.room {
-            room.items?.append(item)
-        }
-        if let sector = item.sector {
-            sector.items?.append(item)
-        }
-        if let shelf = item.shelf {
-            shelf.items?.append(item)
-        }
-        if let boxName = item.boxNameRef {
-            boxName.items?.append(item)
-        }
-        if let boxType = item.boxTypeRef {
-            boxType.items?.append(item)
+        if let box = item.box {
+            if box.items == nil {
+                box.items = []
+            }
+            box.items?.append(item)
+            if let room = box.room {
+                room.items?.append(box)
+            }
+            if let sector = box.sector {
+                sector.items?.append(box)
+            }
+            if let shelf = box.shelf {
+                shelf.items?.append(box)
+            }
+            if let boxType = box.boxType {
+                boxType.boxes?.append(box)
+            }
         }
     }
     try context.save()
@@ -74,8 +78,8 @@ func contextSnapshot(from context: ModelContext) throws -> ShareSnapshot {
         shelves: try context.fetch(FetchDescriptor<Shelf>()).filter {
             !$0.shelfName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         },
-        boxNames: try context.fetch(FetchDescriptor<BoxName>()).filter {
-            !$0.boxNameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        boxes: try context.fetch(FetchDescriptor<Box>()).filter {
+            !$0.numberOrName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         },
         boxTypes: try context.fetch(FetchDescriptor<BoxType>()).filter {
             !$0.boxTypeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -92,7 +96,7 @@ struct ShareCollectionView: View {
                 Room.self,
                 Sector.self,
                 Shelf.self,
-                BoxName.self,
+                Box.self,
                 BoxType.self
             ])
             print("✅ Attempting to register schema with types: \(schema)")
@@ -112,16 +116,7 @@ struct ShareCollectionView: View {
 
     static func cleanPlaceholderItemsOnLaunch() {
         let context = sharedContainer.mainContext
-        let itemsToDelete = try? context.fetch(FetchDescriptor<Item>()).filter {
-            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            $0.itemDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            $0.boxNameRef == nil &&
-            $0.boxTypeRef == nil &&
-            $0.room == nil &&
-            $0.sector == nil &&
-            $0.shelf == nil &&
-            $0.category == nil
-        }
+        let itemsToDelete = try? context.fetch(FetchDescriptor<Item>()).filter { isItemEmpty($0) }
         itemsToDelete?.forEach { context.delete($0) }
         try? context.save()
     }
@@ -326,7 +321,7 @@ func buildCombinedSnapshot(from snapshot: ShareSnapshot) -> [any PersistentModel
     combined.append(contentsOf: snapshot.rooms)
     combined.append(contentsOf: snapshot.sectors)
     combined.append(contentsOf: snapshot.shelves)
-    combined.append(contentsOf: snapshot.boxNames)
+    combined.append(contentsOf: snapshot.boxes)
     combined.append(contentsOf: snapshot.boxTypes)
     return combined
 }
@@ -468,14 +463,14 @@ class CloudKitSharingManager {
             return record
         }
 
-        // Filter and map boxNames
-        let filteredBoxNames = snapshot.boxNames.filter {
-            !$0.boxNameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // Filter and map boxes
+        let filteredBoxes = snapshot.boxes.filter {
+            !$0.numberOrName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        allRecords += filteredBoxNames.map {
+        allRecords += filteredBoxes.map {
             let recordID = CKRecord.ID(recordName: UUID().uuidString, zoneID: zone.zoneID)
-            let record = CKRecord(recordType: "BoxName", recordID: recordID)
-            record["boxNameText"] = $0.boxNameText as CKRecordValue
+            let record = CKRecord(recordType: "Box", recordID: recordID)
+            record["numberOrName"] = $0.numberOrName as CKRecordValue
             return record
         }
 
