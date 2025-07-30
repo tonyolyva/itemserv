@@ -77,112 +77,194 @@ public struct AddItemView: View {
                                 .animation(.easeInOut(duration: 0.35), value: selectedImage)
                         }
                         // 1. Name
-                        VStack(alignment: .leading, spacing: 4) { // Control spacing between a title ITEM NAME and Name field
-//                            VStack(alignment: .leading, spacing: 8) { // Control spacing between a title ITEM NAME and Name field
+                        VStack(alignment: .leading, spacing: 4) { // spacing between title ITEM NAME and Name field
+//                            VStack(alignment: .leading, spacing: 8) { //spacing between title ITEM NAME and Name field
                             Text("ITEM NAME")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            TextField("Name", text: $item.name)
+                            
+//                            TextField("Name", text: $item.name)
+                            TextField("Name", text: $item.name) // add yuta
+//                                .background(Color.secondary) // add yuta - border around field only
                                 .focused($nameFieldFocused)
-                                .textFieldStyle(.roundedBorder)
+//                                .textFieldStyle(.roundedBorder) // del yuta
+                                .padding(.top, 8) // Control spacing inside textfield
+                                .padding(.bottom, 8) // Control spacing inside textfield
+                                .background(Color(.tertiarySystemFill)) // add yuta
                         }
-                        .padding(.bottom, 12) // Control spacing between name field and a title ITEM DESCRIPTION
+                        .padding(.bottom, 22) // Control spacing between Name field and title ITEM DESCRIPTION
                         .padding(.horizontal)
                         .id("name")
+//                        .background(Color.secondary) // add yuta
+//                        .background(Color.primary) // add yuta
+                        .background(Color.black) // add yuta
+
 
                         // 2. Description
                         VStack(alignment: .leading, spacing: 4) { // Control spacing between a title ITEM DESCRIPTION and Description field
-//                            VStack(alignment: .leading, spacing: 8) { // Control spacing between a title ITEM NAME and Name field
+//                            VStack(alignment: .leading, spacing: 8) { // spacing between title ITEM NAME and Name field
                             Text("ITEM DESCRIPTION")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+//                                .padding(.horizontal, 10) // add yuta - doesn't work here
+
 //                                .padding(.bottom, -6) // Reduce gap before Category
-//                                .padding(.bottom, 4) // Control spacing between a title ITEM DESCRIPTION and Description field
+//                                .padding(.bottom, 4) // spacing between title ITEM DESCRIPTION and Description field
                             TextField("Description", text: $item.itemDescription)
                                 .focused($nameFieldFocused)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        .padding(.bottom, 12) // Control spacing between Description field and Category
-                        .padding(.horizontal)
-                    }
+//                                .textFieldStyle(.roundedBorder) // del yuta
+//                                .background(Color.red) // add yuta - around textfield if textFieldStyle(.roundedBorder)
+//                                .background(Color.secondary) // add yuta - background of textfield
+//                                .background(Color.gray) // add yuta - background of textfield
+                                .padding(.top, 8) // Control spacing inside textfield
+                                .padding(.bottom, 8) // Control spacing inside textfield
+                                .background(Color.gray.opacity(0.2)) // add yuta - background of textfield
+//                                .padding(.left, 20) // add yuta - compiler error
+//                                .padding(.horizontal, 10) // add yuta - works
+//                                .padding() // add yuta
 
-                    // 3. Category Picker Button
-                    Button {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            showCategoryPicker = true
+//                                .background(Color.green) // add yuta
+//                                .cornerRadius(12) // add yuta
+//                                .padding(.bottom, 42) // Control spacing between Description field and Category
+                            
                         }
-                    } label: {
-                        HStack {
-                            Text("Category")
-                            Spacer()
-                            Text(selectedCategoryName)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
+                        .padding(.bottom, 38) // Control spacing between Name field and Category
                         .padding(.horizontal)
-                        .frame(height: 44)
-                        .background(Color(.systemBackground))
+                        //                        .background(Color.secondary) // add yuta
+                        //                        .background(Color.primary) // add yuta
+                        .background(Color.black) // background around text field - add yuta
                     }
-                    .buttonStyle(.plain)
-                    .sheet(isPresented: $showCategoryPicker) {
-                        NavigationStack {
-                            FullScreenPicker(
-                                title: "Category",
-                                items: categories,
-                                selected: categories.first(where: { $0.persistentModelID == tempSelectedCategoryID }),
-                                label: { $0.categoryNameWrapped },
-                                onSelect: { tempSelectedCategoryID = $0?.persistentModelID }
-                            )
-                        }
-                    }
-                    .padding(.bottom, 12) // Control spacing between Category nnd Box name
+                    .background(Color.black) // add yuta
 
-                    // 4. Box Picker Button
-                    Button {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            showBoxPicker = true
-                        }
-                    } label: {
-                        HStack {
-                            Text("Box Name")
-                            Spacer()
-                            Text(selectedBoxName)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal)
-                        .frame(height: 44)
-                        .background(Color(.systemBackground))
-                    }
-                    .buttonStyle(.plain)
-                    .sheet(isPresented: $showBoxPicker) {
-                        NavigationStack {
-                            let groupedBoxes = Dictionary(grouping: boxNames, by: \.numberOrName)
-                            let dedupedBoxes = groupedBoxes.compactMap { $0.value.first }
-                            let uniqueBoxes = dedupedBoxes.sorted {
-                                if $0.numberOrName == "Unboxed" { return true }
-                                if $1.numberOrName == "Unboxed" { return false }
-                                if let lhsInt = Int($0.numberOrName), let rhsInt = Int($1.numberOrName) {
-                                    return lhsInt < rhsInt
-                                }
-                                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending
+//                    .padding(.bottom, 20) // Control spacing between Description field and Category
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    VStack(spacing: 34) {
+                        // 3. Category Picker Button
+                        Button {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                showCategoryPicker = true
                             }
-                            FullScreenPicker(
-                                title: "Box Name",
-                                items: uniqueBoxes,
-                                selected: uniqueBoxes.first(where: { $0.persistentModelID == tempSelectedBoxID }),
-                                label: { box in
-                                    let count = box.items?.count ?? 0
-                                    return count > 0
+                        } label: {
+                            HStack {
+                                Text("Category")
+                                Spacer()
+                                Text(selectedCategoryName)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+//                            .frame(height: 44)
+                            .frame(height: 24) // mod yuta
+
+                            //                        .background(Color(.systemBackground))
+                        }
+                        .buttonStyle(.plain)
+                        //                    .textFieldStyle(.roundedBorder) // add yuta
+                        //                    .padding(.top, 20) // add yuta - spacing between Description field and Category
+                        .padding(.horizontal, 16) // mod yuta - text inside element left - right
+                        .cornerRadius(10) // Applies a 10-point corner radius
+                        .sheet(isPresented: $showCategoryPicker) {
+                            NavigationStack {
+                                FullScreenPicker(
+                                    title: "Category",
+                                    items: categories,
+                                    selected: categories.first(where: { $0.persistentModelID == tempSelectedCategoryID }),
+                                    label: { $0.categoryNameWrapped },
+                                    onSelect: { tempSelectedCategoryID = $0?.persistentModelID }
+                                )
+                            }
+                        }
+                        .padding(.top, 8) // add yuta - spacing between Category and Box name
+                        .padding(.bottom, 8) // add yuta - between Box Name and a title ADD PHOTO
+                        .padding(.horizontal, 6) // add yuta - inside element (Box name + Value)
+                        //                    .foregroundColor(.secondary) // add yuta - text Box Name & selected value
+                        .foregroundColor(.primary) // add yuta - text Box Name & selected value
+                        .background(Color(.tertiarySystemFill)) // add yuta
+
+                        
+                        
+                        
+                        
+
+                        // 4. Box Picker Button
+                        Button {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                showBoxPicker = true
+                            }
+                        } label: {
+                            HStack {
+                                Text("Box Name")
+                                Spacer()
+                                Text(selectedBoxName)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal)
+                            .frame(height: 30)
+                            //                        .background(Color(.systemBackground)) // del yuta
+                        }
+                        .buttonStyle(.plain)
+//                        .buttonStyle(.bordered)
+//                        .buttonStyle(.borderedProminent)
+                        
+//                        .cornerRadius(15) // Applies a 10-point corner radius
+//                        .background(Color(.tertiarySystemFill)) // add yuta
+
+                        
+
+                        //                    .background(Color(.systemBackground)) // add yuta - around field
+                        //                    .background(Color(.black)) // add yuta - around field - inside field
+                        .sheet(isPresented: $showBoxPicker) {
+                            NavigationStack {
+                                let groupedBoxes = Dictionary(grouping: boxNames, by: \.numberOrName)
+                                let dedupedBoxes = groupedBoxes.compactMap { $0.value.first }
+                                let uniqueBoxes = dedupedBoxes.sorted {
+                                    if $0.numberOrName == "Unboxed" { return true }
+                                    if $1.numberOrName == "Unboxed" { return false }
+                                    if let lhsInt = Int($0.numberOrName), let rhsInt = Int($1.numberOrName) {
+                                        return lhsInt < rhsInt
+                                    }
+                                    return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending
+                                }
+                                FullScreenPicker(
+                                    title: "Box Name",
+                                    items: uniqueBoxes,
+                                    selected: uniqueBoxes.first(where: { $0.persistentModelID == tempSelectedBoxID }),
+                                    label: { box in
+                                        let count = box.items?.count ?? 0
+                                        return count > 0
                                         ? "📦 \(box.numberOrName)  ✨ \(count)"
                                         : "📦 \(box.numberOrName)"
-                                },
-                                onSelect: { tempSelectedBoxID = $0?.persistentModelID }
-                            )
+                                    },
+                                    onSelect: { tempSelectedBoxID = $0?.persistentModelID }
+                                )
+                            }
                         }
+                        .padding(.top, 8) // add yuta - spacing between Category and Box name
+                        .padding(.bottom, 8) // add yuta - between Box Name and a title ADD PHOTO
+                        .padding(.horizontal, 6) // add yuta - inside element (Box name + Value)
+                        //                    .foregroundColor(.secondary) // add yuta - text Box Name & selected value
+                        .foregroundColor(.primary) // add yuta - text Box Name & selected value
+                        .background(Color(.tertiarySystemFill)) // add yuta
                     }
-                    .padding(.bottom, 12) // Control spacing between Box name and a title ADD PHOTO
+                    .padding(.horizontal, 12) // add yuta
+                    .padding(.bottom, 30) // add yuta - between Box Name and a title ADD PHOTO
 
+                    .background(Color(.black)) // add yuta - outside element
+
+                    
+                    
+
+                        
+                        
+                        
+                        
+                        
                     // 5. Photo Library / Camera
                     Form {
                         Section(header: Text("Add Photo").font(.caption).foregroundStyle(.secondary)) {
@@ -199,6 +281,8 @@ public struct AddItemView: View {
                         .listRowInsets(EdgeInsets())
                     }
                     .scrollContentBackground(.hidden)
+                    .background(Color(.black)) // add yuta
+
 
                     // 6. Barcode Scanner Button & Manual Entry Inline
                     // 6. Barcode Scanner Button & Manual Entry Inline
@@ -287,12 +371,14 @@ public struct AddItemView: View {
                                     .cornerRadius(6)
                                     .foregroundColor(.white)
                                     .transition(.opacity)
-                                
-                                
                             }
                         }
                         .padding(.horizontal)
                     }
+                    .background(Color.black) // add yuta
+
+                    
+                    
                 }
                 .onChange(of: scrollTarget) { target in
                     guard let target = target else { return }
