@@ -90,8 +90,18 @@ class ItemLabelPrintHelper {
             let barcodeRect = CGRect(x: barcodeX, y: barcodeY, width: barcodeWidth, height: barcodeHeight)
             barcodeImage.draw(in: barcodeRect)
 
-            // Draw barcode digits, grouped and extended slightly beyond the barcode image
-            let barcodeFont = UIFont.monospacedDigitSystemFont(ofSize: 42, weight: .medium)
+            // Remove leading digit (e.g., drop first "0" for display)
+            let barcodeDigits = String(item.barcodeValue.dropFirst())
+
+            // Define digit groups (e.g., 5 27337 76863 7)
+            // Updated spacing: less space around groups, tighter but still readable
+            let groups = [1, 5, 5, 1]
+            let extraSpacingIndexes: Set<Int> = [0, 5, 10] // spacing after 1st, after 6th, after 11th digits
+            var digitIndex = barcodeDigits.startIndex
+
+//            let barcodeFont = UIFont.monospacedDigitSystemFont(ofSize: 42, weight: .medium)
+            let barcodeFont = UIFont.monospacedDigitSystemFont(ofSize: 41, weight: .medium)
+
             let digitAttributes: [NSAttributedString.Key: Any] = [
                 .font: barcodeFont,
                 .foregroundColor: UIColor.black
@@ -101,14 +111,13 @@ class ItemLabelPrintHelper {
             let digitY = barcodeY + barcodeHeight - digitHeight + 30
 
             // Define digit groups (e.g., 6 39277 67064 9)
-            let groups = [1, 5, 5, 1] // 6       39277 67064       9
-            let extraSpacingIndexes: Set<Int> = [0, 10, 11, 12] // before 3, after 4, before 9, after 9
-            var digitIndex = item.barcodeValue.startIndex
+            
+
             var digitX = barcodeX - 37  // start slightly before barcode
 
             for groupSize in groups {
-                let groupEnd = item.barcodeValue.index(digitIndex, offsetBy: groupSize, limitedBy: item.barcodeValue.endIndex) ?? item.barcodeValue.endIndex
-                let group = String(item.barcodeValue[digitIndex..<groupEnd])
+                let groupEnd = barcodeDigits.index(digitIndex, offsetBy: groupSize, limitedBy: barcodeDigits.endIndex) ?? barcodeDigits.endIndex
+                let group = String(barcodeDigits[digitIndex..<groupEnd])
                 let groupWidth = CGFloat(group.count) * 32
 
                 for (i, char) in group.enumerated() {
@@ -136,14 +145,14 @@ class ItemLabelPrintHelper {
                     digit.draw(in: digitDrawRect, withAttributes: digitAttributes)
 
                     // Index arithmetic to determine first and last digits
-                    let isFirstDigit = digitIndex == item.barcodeValue.startIndex && i == 0
-                    let isLastGroup = groupEnd == item.barcodeValue.endIndex
+                    let isFirstDigit = digitIndex == barcodeDigits.startIndex && i == 0
+                    let isLastGroup = groupEnd == barcodeDigits.endIndex
                     let isLastDigit = isLastGroup && i == group.count - 1
 
-                    let globalIndex = item.barcodeValue.distance(from: item.barcodeValue.startIndex, to: item.barcodeValue.index(digitIndex, offsetBy: i))
+                    let globalIndex = barcodeDigits.distance(from: barcodeDigits.startIndex, to: barcodeDigits.index(digitIndex, offsetBy: i))
                     let extraSpace: CGFloat
                     if extraSpacingIndexes.contains(globalIndex) {
-                        extraSpace = 110
+                        extraSpace = 80 // reduced spacing between groups
                     } else {
                         extraSpace = 11 // space between digits
                     }

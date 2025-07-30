@@ -15,6 +15,7 @@ struct AdminPanelView: View {
                 NavigationLink("Manage Boxes", destination: ManageBoxesView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Box Types", destination: ManageBoxTypesView().modelContext(sharedModelContainer.mainContext))
                 NavigationLink("Manage Items", destination: ManageItemsView().modelContext(sharedModelContainer.mainContext))
+                NavigationLink("Manage Locations", destination: ManageLocationsView().modelContext(sharedModelContainer.mainContext))
 //                NavigationLink("Share Collection", destination: ShareCollectionView())
 //                NavigationLink("Manage Sync", destination: ManageSyncView().modelContext(sharedModelContainer.mainContext))
             }

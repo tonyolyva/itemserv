@@ -362,29 +362,21 @@ struct ManageItemsView: View {
                         .padding(.bottom)
                         
                         if let categories = importMetadata.data["categories"] as? [String] {
-                            Label("Categories", systemImage: "tag").bold().foregroundStyle(.purple)
-                            Text(categories.joined(separator: "\n")).multilineTextAlignment(.leading)
+                            Label("Categories", systemImage: "tag")
+                                .bold()
+                                .foregroundStyle(.purple)
+                            Text(categories.joined(separator: "\n"))
+                                .multilineTextAlignment(.leading)
                         }
-                        if let rooms = importMetadata.data["rooms"] as? [String] {
-                            Label("Rooms", systemImage: "house").bold().foregroundStyle(.orange)
-                            Text(rooms.joined(separator: "\n")).multilineTextAlignment(.leading)
-                        }
-                        if let sectors = importMetadata.data["sectors"] as? [String] {
-                            Label("Sectors", systemImage: "square.grid.3x2").bold().foregroundStyle(.mint)
-                            Text(sectors.joined(separator: "\n")).multilineTextAlignment(.leading)
-                        }
-                        if let shelves = importMetadata.data["shelves"] as? [String] {
-                            Label("Shelves", systemImage: "tray.2").bold().foregroundStyle(.teal)
-                            Text(shelves.joined(separator: "\n")).multilineTextAlignment(.leading)
-                        }
+
                         if let boxNames = importMetadata.data["boxNames"] as? [String] {
-                            Label("Box Names", systemImage: "cube.box").bold().foregroundStyle(.indigo)
-                            Text(boxNames.joined(separator: "\n")).multilineTextAlignment(.leading)
+                            Label("Box Names", systemImage: "cube.box")
+                                .bold()
+                                .foregroundStyle(.indigo)
+                            Text(boxNames.joined(separator: "\n"))
+                                .multilineTextAlignment(.leading)
                         }
-                        if let boxTypes = importMetadata.data["boxTypes"] as? [String] {
-                            Label("Box Types", systemImage: "square.stack.3d.up").bold().foregroundStyle(.pink)
-                            Text(boxTypes.joined(separator: "\n")).multilineTextAlignment(.leading)
-                        }
+                        
                     }
                     .padding()
                 }
@@ -438,69 +430,54 @@ struct ManageItemsView: View {
                 let data = try Data(contentsOf: jsonURL)
                 guard let rawItems = try JSONSerialization.jsonObject(with: data) as? [[String: String]] else { return }
 
-                // Filter out entries with empty or whitespace-only names
+                // Filter out invalid names
                 let validRawItems = rawItems.filter {
                     let name = $0["name"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                     return !name.isEmpty
                 }
 
+                // Clear existing items
                 let existingItems = try modelContext.fetch(FetchDescriptor<Item>())
                 for item in existingItems {
                     modelContext.delete(item)
                 }
 
+                // Import items
                 for raw in validRawItems {
-                    // Read all keys in consistent order with default fallback
                     let item = Item(
                         name: raw["name"] ?? "",
                         itemDescription: raw["description"] ?? "",
                         barcodeValue: raw["barcodeValue"] ?? ""
                     )
 
-                    // imageFilename
+                    // Image
                     if let imageName = raw["imageFilename"], !imageName.isEmpty {
                         let imagePath = tempDir.appendingPathComponent(imageName)
                         item.imageData = try? Data(contentsOf: imagePath)
                     }
 
-                    // Prepare related objects
-                    var room: Room?
-                    if let roomName = raw["room"] {
-                        room = try? Room.fetchOne(name: roomName, context: modelContext)
+                    // Box (V3 simplified)
+                    if let boxName = raw["boxName"], !boxName.isEmpty {
+                        let descriptor = FetchDescriptor<Box>(predicate: #Predicate { $0.numberOrName == boxName })
+                        if let existingBox = try? modelContext.fetch(descriptor).first {
+                            item.box = existingBox
+                        } else {
+                            let newBox = Box(numberOrName: boxName)
+                            modelContext.insert(newBox)
+                            item.box = newBox
+                        }
                     }
 
-                    var sector: Sector?
-                    if let sectorName = raw["sector"] {
-                        sector = try? Sector.fetchOne(name: sectorName, context: modelContext)
-                    }
-
-                    var shelf: Shelf?
-                    if let shelfName = raw["shelf"] {
-                        shelf = try? Shelf.fetchOne(name: shelfName, context: modelContext)
-                    }
-
-                    var boxType: BoxType?
-                    if let boxTypeName = raw["boxType"] {
-                        boxType = try? BoxType.fetchOne(name: boxTypeName, context: modelContext)
-                    }
-
-                    if let boxName = raw["boxName"],
-                       let box = try? Box.fetchOne(name: boxName, context: modelContext) {
-                        item.box = box
-                    } else {
-                        let newBox = Box(numberOrName: raw["boxName"] ?? "")
-                        newBox.room = room
-                        newBox.sector = sector
-                        newBox.shelf = shelf
-                        newBox.boxType = boxType
-                        modelContext.insert(newBox)
-                        item.box = newBox
-                    }
-
-                    // categoryName
-                    if let categoryName = raw["categoryName"],
-                       let category = try? Category.fetchOne(name: categoryName, context: modelContext) {
-                        item.category = category
+                    // Category
+                    if let categoryName = raw["categoryName"], !categoryName.isEmpty {
+                        let descriptor = FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == categoryName })
+                        if let existingCategory = try? modelContext.fetch(descriptor).first {
+                            item.category = existingCategory
+                        } else {
+                            let newCategory = Category(categoryName: categoryName)
+                            modelContext.insert(newCategory)
+                            item.category = newCategory
+                        }
                     }
 
                     modelContext.insert(item)
@@ -515,7 +492,9 @@ struct ManageItemsView: View {
             print("Access denied to file.")
         }
     }
-}
+
+
+} // End of struct ManageItemsView
 
 extension Category {
     static func fetchOne(name: String, context: ModelContext) throws -> Category? {
@@ -581,23 +560,21 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
                 imageName = ""
             }
 
+            // Simplified export for V3: no room, sector, shelf, or boxType (handled in Location separately)
             var orderedDict = OrderedDictionary<String, String>()
             orderedDict["name"] = item.name
             orderedDict["description"] = item.itemDescription
             orderedDict["categoryName"] = item.category?.categoryName ?? ""
             orderedDict["barcodeValue"] = item.barcodeValue
             orderedDict["imageFilename"] = imageName
-            orderedDict["room"] = item.box?.room?.roomName ?? ""
-            orderedDict["sector"] = item.box?.sector?.sectorName ?? ""
-            orderedDict["shelf"] = item.box?.shelf?.shelfName ?? ""
             orderedDict["boxName"] = item.box?.numberOrName ?? ""
-            orderedDict["boxType"] = item.box?.boxType?.boxTypeText ?? ""
 
             // Don't wrap with .map { ($0.key, $0.value) } anymore
             jsonArray.append(orderedDict.reduce(into: [String: String]()) { $0[$1.key] = $1.value })
         }
         // Manual JSON formatting with consistent key order and spacing
-        let keyOrder = ["name", "description", "categoryName", "barcodeValue", "imageFilename", "room", "sector", "shelf", "boxName", "boxType"]
+        // Simplified key order for V3 (no room, sector, shelf, boxType)
+        let keyOrder = ["name", "description", "categoryName", "barcodeValue", "imageFilename", "boxName"]
         var itemStrings: [String] = []
         for dictionary in jsonArray {
             let pairs = keyOrder.map { key -> String in
@@ -612,9 +589,9 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         let jsonURL = tempDir.appendingPathComponent("items.json")
         try jsonData.write(to: jsonURL)
 
-        // --- Write items.tsv ---
+// --- Write items.tsv ---
         let tsvURL = tempDir.appendingPathComponent("items.tsv")
-        let tsvHeader = ["name", "description", "categoryName", "barcodeValue", "imageFilename", "room", "sector", "shelf", "boxName", "boxType"]
+        let tsvHeader = ["name", "description", "categoryName", "barcodeValue", "imageFilename", "boxName"]
         var tsvRows: [String] = [tsvHeader.joined(separator: "\t")]
         for item in items {
             let tsvValues: [String] = [
@@ -623,11 +600,7 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
                 item.category?.categoryName ?? "",
                 item.barcodeValue,
                 item.barcodeValue + ".jpg",
-                item.box?.room?.roomName ?? "",
-                item.box?.sector?.sectorName ?? "",
-                item.box?.shelf?.shelfName ?? "",
-                item.box?.numberOrName ?? "",
-                item.box?.boxType?.boxTypeText ?? ""
+                item.box?.numberOrName ?? ""
             ].map { $0.replacingOccurrences(of: "\t", with: " ") }
             tsvRows.append(tsvValues.joined(separator: "\t"))
         }
@@ -642,8 +615,9 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         let boxNames = (try? modelContext.fetch(FetchDescriptor<Box>()).map { $0.numberOrName }) ?? []
         let boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>()).map { $0.boxTypeText }) ?? []
 
-        // Manual meta.json export with fixed key order and formatting
-        let metaKeyOrder = ["exportedBy", "exportedAt", "totalItems", "totalImages", "deviceName", "deviceModel", "systemVersion", "categories", "rooms", "sectors", "shelves", "boxNames", "boxTypes"]
+        // Simplified meta.json export with fewer keys (V3)
+        let metaKeyOrder = ["exportedBy", "exportedAt", "totalItems", "totalImages", "deviceName", "deviceModel", "systemVersion", "categories", "boxNames"]
+
         let metaValues: [String: Any] = [
             "exportedBy":
                 "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "itemserv") " +
@@ -656,12 +630,10 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
             "deviceModel": getDeviceModelIdentifier(),
             "systemVersion": UIDevice.current.systemVersion,
             "categories": categories,
-            "rooms": rooms,
-            "sectors": sectors,
-            "shelves": shelves,
-            "boxNames": boxNames,
-            "boxTypes": boxTypes
+            "boxNames": boxNames
         ]
+
+        // Format meta.json
         let metaString = metaKeyOrder.map { key -> String in
             if let array = metaValues[key] as? [String] {
                 let jsonArray = array.map { "\"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" }.joined(separator: ", ")
@@ -672,8 +644,9 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
                 return "  \"\(key)\": \(metaValues[key] ?? "null")"
             }
         }.joined(separator: ",\n")
+
         let finalMetaString = "{\n" + metaString + "\n}"
-        let metadataData = finalMetaString.data(using: .utf8)!
+        let metadataData = finalMetaString.data(using: String.Encoding.utf8)!
         let metadataURL = tempDir.appendingPathComponent("meta.json")
         try metadataData.write(to: metadataURL)
 
@@ -682,8 +655,7 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         var metaTSVRows: [String] = ["key\tvalue"]
         for key in metaKeyOrder {
             if let array = metaValues[key] as? [String] {
-                let value = array.joined(separator: ", ")
-                metaTSVRows.append("\(key)\t\(value)")
+                metaTSVRows.append("\(key)\t\(array.joined(separator: ", "))")
             } else if let value = metaValues[key] {
                 metaTSVRows.append("\(key)\t\(value)")
             }
