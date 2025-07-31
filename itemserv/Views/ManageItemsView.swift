@@ -37,12 +37,17 @@ struct ManageItemsView: View {
     @State private var showSuccessMessage = false
     @State private var successMessage = ""
     @State private var showDeleteAllConfirmation = false
-    @State private var showDeleteEmptyConfirmation = false
     @State private var isBusy = false
     
     var body: some View {
         NavigationStack {
             let controls = VStack {
+                Text("💡 Hint: For a clean import test, delete Items first here, then delete Locations in Manage Locations.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+                Divider()
+                    .padding(.vertical, 4)
                 Button("Import Items") {
                     confirmReplace = true
                 }
@@ -63,102 +68,38 @@ struct ManageItemsView: View {
                 .padding()
 
 
-                Button("Delete Empty Records") {
-                    showDeleteEmptyConfirmation = true
-                }
-                .padding()
-                .confirmationDialog("Are you sure you want to delete all empty records?", isPresented: $showDeleteEmptyConfirmation) {
-                    Button("Delete", role: .destructive) {
-                        Task {
-                            isBusy = true
-                            try? await Task.sleep(nanoseconds: 300_000_000) // Delay for animation
-                            let categories = try? modelContext.fetch(FetchDescriptor<Category>())
-                            let rooms = try? modelContext.fetch(FetchDescriptor<Room>())
-                            let sectors = try? modelContext.fetch(FetchDescriptor<Sector>())
-                            let shelves = try? modelContext.fetch(FetchDescriptor<Shelf>())
-                            let boxNames = try? modelContext.fetch(FetchDescriptor<Box>())
-                            let boxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>())
-                            
-                            for category in categories ?? [] where (category.categoryName?.trimmed().isEmpty ?? true) {
-                                modelContext.delete(category)
-                            }
-                            for room in rooms ?? [] where room.roomName.trimmed().isEmpty {
-                                modelContext.delete(room)
-                            }
-                            for sector in sectors ?? [] where sector.sectorName.trimmed().isEmpty {
-                                modelContext.delete(sector)
-                            }
-                            for shelf in shelves ?? [] where shelf.shelfName.trimmed().isEmpty {
-                                modelContext.delete(shelf)
-                            }
-                            for box in boxNames ?? [] where box.numberOrName.trimmed().isEmpty {
-                                modelContext.delete(box)
-                            }
-                            for boxType in boxTypes ?? [] where boxType.boxTypeText.trimmed().isEmpty {
-                                modelContext.delete(boxType)
-                            }
-                            try? modelContext.save()
-                            isBusy = false
-                            withAnimation {
-                                successMessage = "Empty records deleted"
-                                showSuccessMessage = true
-                            }
-                            try? await Task.sleep(nanoseconds: 2_000_000_000)
-                            withAnimation {
-                                showSuccessMessage = false
-                            }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                }
 
                 Button(role: .destructive) {
                     showDeleteAllConfirmation = true
                 } label: {
-                    Text("Delete All Data")
+                    Text("Delete All Items")
                         .padding()
                 }
-                .confirmationDialog("Are you sure you want to delete all data? This cannot be undone.", isPresented: $showDeleteAllConfirmation) {
-                    Button("Delete All", role: .destructive) {
+                .confirmationDialog("Are you sure you want to delete all items? This cannot be undone.", isPresented: $showDeleteAllConfirmation) {
+                    Button("Delete All Items", role: .destructive) {
                         Task {
                             isBusy = true
                             try? await Task.sleep(nanoseconds: 300_000_000)
+                            // Fetch only Items and Categories for deletion
                             let allItems = try? modelContext.fetch(FetchDescriptor<Item>())
                             let categories = try? modelContext.fetch(FetchDescriptor<Category>())
-                            let rooms = try? modelContext.fetch(FetchDescriptor<Room>())
-                            let sectors = try? modelContext.fetch(FetchDescriptor<Sector>())
-                            let shelves = try? modelContext.fetch(FetchDescriptor<Shelf>())
-                            let boxNames = try? modelContext.fetch(FetchDescriptor<Box>())
-                            let boxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>())
-                            
+
+                            // Delete Items
                             for item in allItems ?? [] {
                                 modelContext.delete(item)
                             }
+                            // Delete Categories
                             for category in categories ?? [] {
                                 modelContext.delete(category)
                             }
-                            for room in rooms ?? [] {
-                                modelContext.delete(room)
-                            }
-                            for sector in sectors ?? [] {
-                                modelContext.delete(sector)
-                            }
-                            for shelf in shelves ?? [] {
-                                modelContext.delete(shelf)
-                            }
-                            for box in boxNames ?? [] {
-                                modelContext.delete(box)
-                            }
-                            for boxType in boxTypes ?? [] {
-                                modelContext.delete(boxType)
-                            }
+
                             try? modelContext.save()
                             isBusy = false
                             withAnimation {
-                                successMessage = "All data deleted"
+                                successMessage = "All items deleted. ✅ Now delete Locations in Manage Locations."
                                 showSuccessMessage = true
                             }
-                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
                             withAnimation {
                                 showSuccessMessage = false
                             }
@@ -615,8 +556,8 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         let boxNames = (try? modelContext.fetch(FetchDescriptor<Box>()).map { $0.numberOrName }) ?? []
         let boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>()).map { $0.boxTypeText }) ?? []
 
-        // Simplified meta.json export with fewer keys (V3)
-        let metaKeyOrder = ["exportedBy", "exportedAt", "totalItems", "totalImages", "deviceName", "deviceModel", "systemVersion", "categories", "boxNames"]
+// Simplified meta.json export with fewer keys (V3)
+        let metaKeyOrder = ["exportedBy", "exportedAt", "deviceName", "deviceModel", "systemVersion", "totalItems", "totalImages", "categories", "boxNames"]
 
         let metaValues: [String: Any] = [
             "exportedBy":
@@ -636,8 +577,10 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         // Format meta.json
         let metaString = metaKeyOrder.map { key -> String in
             if let array = metaValues[key] as? [String] {
-                let jsonArray = array.map { "\"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" }.joined(separator: ", ")
-                return "  \"\(key)\": [\(jsonArray)]"
+                // Multi-line JSON array
+                let jsonArray = array.map { "    \"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" }
+                                     .joined(separator: ",\n")
+                return "  \"\(key)\": [\n\(jsonArray)\n  ]"
             } else if let str = metaValues[key] as? String {
                 return "  \"\(key)\": \"\(str.replacingOccurrences(of: "\"", with: "\\\""))\""
             } else {
@@ -655,7 +598,9 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         var metaTSVRows: [String] = ["key\tvalue"]
         for key in metaKeyOrder {
             if let array = metaValues[key] as? [String] {
-                metaTSVRows.append("\(key)\t\(array.joined(separator: ", "))")
+                for element in array {
+                    metaTSVRows.append("\(key)\t\(element)")
+                }
             } else if let value = metaValues[key] {
                 metaTSVRows.append("\(key)\t\(value)")
             }
