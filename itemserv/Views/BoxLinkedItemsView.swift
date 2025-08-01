@@ -9,13 +9,20 @@ struct BoxLinkedItemsView: View {
     
     @State private var newBox: String = ""
     @State private var searchText: String = ""
-    @State private var sortAscending: Bool = true
+    enum SortSelection: String, CaseIterable, Identifiable {
+        case recent = "Recent"
+        case az = "A → Z"
+        case za = "Z → A"
+        var id: String { rawValue }
+    }
+    @State private var sortSelection: SortSelection = .recent
     @State private var boxToDelete: Box?
     
     @State private var expandedBoxes: [PersistentIdentifier: Bool] = [:]
     @State private var filterSelection: FilterSelection = .allBoxes
     @State private var isShowingScanner = false
     @State private var scrollToBoxID: PersistentIdentifier?
+    @State private var showingSortInfo: Bool = false
     
     enum FilterSelection: String, CaseIterable, Identifiable {
         case allBoxes = "All Boxes"
@@ -27,27 +34,31 @@ struct BoxLinkedItemsView: View {
     }
     
     private var sortedBoxes: [Box] {
-        let unboxed = boxes.first(where: { $0.numberOrName == "Unboxed" })
-        let numericBoxes = boxes.filter { $0.numberOrName != "Unboxed" }
-
-        let paired = numericBoxes.map { box in
-            let hashComponent = abs(box.numberOrName.hashValue % 1000)
-            let number = Int(box.numberOrName) ?? (Int.max - hashComponent)
-            return (box, number)
+        let allBoxes = boxes // Include Unboxed naturally
+        
+        var sorted: [Box] = []
+        switch sortSelection {
+        case .recent:
+            // Sort all boxes (including Unboxed) by latest activity
+            sorted = allBoxes.sorted {
+                let aDate = $0.items?.compactMap { item in max(item.lastUpdated, item.dateAdded) }.max() ?? .distantPast
+                let bDate = $1.items?.compactMap { item in max(item.lastUpdated, item.dateAdded) }.max() ?? .distantPast
+                return aDate > bDate
+            }
+        case .az:
+            sorted = allBoxes.sorted { $0.numberOrName.localizedStandardCompare($1.numberOrName) == .orderedAscending }
+        case .za:
+            sorted = allBoxes.sorted { $0.numberOrName.localizedStandardCompare($1.numberOrName) == .orderedDescending }
         }
-
-        let sorted = sortAscending
-            ? paired.sorted { $0.1 < $1.1 }.map { $0.0 }
-            : paired.sorted { $0.1 > $1.1 }.map { $0.0 }
-
-        // Remove duplicate box names, preserving order
-        var seen = Set<String>()
-        let deduped = sorted.filter { seen.insert($0.numberOrName).inserted }
-        if let unboxed = unboxed {
-            return sortAscending ? [unboxed] + deduped : deduped + [unboxed]
-        } else {
-            return deduped
+        
+        // For A→Z/Z→A only: stick Unboxed at top
+        if sortSelection != .recent,
+           let unboxedIndex = sorted.firstIndex(where: { $0.numberOrName == "Unboxed" }) {
+            let unboxed = sorted.remove(at: unboxedIndex)
+            sorted.insert(unboxed, at: 0)
         }
+        
+        return sorted
     }
     
     // MARK: - Virtual "Unboxed" Items (for future use)
@@ -76,8 +87,9 @@ struct BoxLinkedItemsView: View {
         case .emptyBoxesOnly:
             deduped = deduped.filter { ($0.items?.isEmpty ?? true) }
         }
-        // Move "Unboxed" to the top if present
-        if let unboxedIndex = deduped.firstIndex(where: { $0.numberOrName == "Unboxed" }) {
+        // Move "Unboxed" to the top only for A→Z and Z→A sorts
+        if sortSelection != .recent,
+           let unboxedIndex = deduped.firstIndex(where: { $0.numberOrName == "Unboxed" }) {
             let unboxed = deduped.remove(at: unboxedIndex)
             deduped.insert(unboxed, at: 0)
         }
@@ -133,12 +145,23 @@ struct BoxLinkedItemsView: View {
                     }
                 )
 
-                // Sort Picker
-                Picker("Sort Order", selection: $sortAscending) {
-                    Text("A → Z").tag(true)
-                    Text("Z → A").tag(false)
+                // Sort Picker (matches Items tab layout)
+                HStack {
+                    Picker("Sort", selection: $sortSelection) {
+                        ForEach(SortSelection.allCases) { selection in
+                            Text(selection.rawValue).tag(selection)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Spacer()
+                    Button(action: {
+                        showingSortInfo.toggle()
+                    }) {
+                        Image(systemName: "info.circle")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("Sorting Info")
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.top)
 
@@ -226,7 +249,8 @@ struct BoxLinkedItemsView: View {
                                     toggleAction: {
                                         expandedBoxes[box.persistentModelID, default: false].toggle()
                                     },
-                                    printAction: { printBoxLabel(box: box) }
+                                    printAction: { printBoxLabel(box: box) },
+                                    showInfo: showingSortInfo
                                 )
                             }
                             .id(box.persistentModelID)
@@ -276,6 +300,7 @@ struct BoxLinkedItemsView: View {
         NavigationStack {
             contentView
         }
+        // Removed alert for sorting info; now inline info is shown in headers
     }
     
     // MARK: - Actions
@@ -401,6 +426,7 @@ struct BoxLinkedItemsView: View {
         let searchText: String
         let toggleAction: () -> Void
         let printAction: () -> Void
+        let showInfo: Bool
 
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
@@ -438,6 +464,31 @@ struct BoxLinkedItemsView: View {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .foregroundColor(.secondary)
                 }
+                if showInfo {
+                    if let mostRecentItem = box.items?.max(by: {
+                        ($0.lastUpdated < $1.lastUpdated)
+                    }) {
+                        let isModified = Calendar.current.compare(mostRecentItem.lastUpdated, to: mostRecentItem.dateAdded, toGranularity: .second) == .orderedDescending
+                        let recentDate = mostRecentItem.lastUpdated
+
+                        HStack(spacing: 4) {
+                            Text(isModified ? "✏️" : "🆕")
+                            Text(recentDate, style: .relative)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    } else if let newestItem = box.items?.max(by: { $0.dateAdded < $1.dateAdded }) {
+                        // Fallback to show 🆕 if item was just added and never modified
+                        HStack(spacing: 4) {
+                            Text("🆕")
+                            Text(newestItem.dateAdded, style: .relative)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
             }
         }
     }
@@ -455,4 +506,5 @@ extension String {
         self.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+
 
