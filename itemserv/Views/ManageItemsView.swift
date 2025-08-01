@@ -270,7 +270,19 @@ struct ManageItemsView: View {
                                 try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
                                 for file in fileList {
                                     if file.lastPathComponent == "items.json" {
-                                        importAllItems(from: url)
+                                        // Load metadata first for confirmation UI
+                                        if let metaFile = fileList.first(where: { $0.lastPathComponent == "meta.json" }) {
+                                            let metaData = try Data(contentsOf: metaFile)
+                                            if let metaDict = try JSONSerialization.jsonObject(with: metaData) as? [String: Any] {
+                                                importMetadata.data = metaDict
+                                                pendingImportURL = url
+                                                importSheetID = UUID()
+                                                showImportSheet = true
+                                            }
+                                        } else {
+                                            // Fallback: import immediately if no meta.json found
+                                            importAllItems(from: url)
+                                        }
                                     }
                                 }
                             }
@@ -288,43 +300,50 @@ struct ManageItemsView: View {
         }
         .fullScreenCover(isPresented: $showImportSheet) {
             NavigationStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Replace all items with imported data?")
-                            .font(.headline)
-                            .padding(.bottom)
-                        
-                        Group {
-                            Text("Source: \((importMetadata.data["deviceName"] as? String) ?? "Unknown")")
-                            Text("Exported At: \((importMetadata.data["exportedAt"] as? String) ?? "Unknown")")
-                            Text("Items: \((importMetadata.data["totalItems"] as? Int).map { String($0) } ?? (importMetadata.data["totalItems"] as? String) ?? "-")")
-                            Text("Images: \((importMetadata.data["totalImages"] as? Int).map { String($0) } ?? (importMetadata.data["totalImages"] as? String) ?? "-")")
-                        }
-                        .padding(.bottom)
-                        
-                        if let categories = importMetadata.data["categories"] as? [String] {
-                            Label("Categories", systemImage: "tag")
-                                .bold()
-                                .foregroundStyle(.purple)
-                            Text(categories.joined(separator: "\n"))
-                                .multilineTextAlignment(.leading)
-                        }
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Confirm Import")
+                                .font(.largeTitle.bold())
+                                .padding(.bottom, 4)
 
-                        if let boxNames = importMetadata.data["boxNames"] as? [String] {
-                            Label("Box Names", systemImage: "cube.box")
-                                .bold()
-                                .foregroundStyle(.indigo)
-                            Text(boxNames.joined(separator: "\n"))
-                                .multilineTextAlignment(.leading)
+                            Text("Replace all items with imported data?")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
+
+                            Group {
+                                Label("Exported by: \((importMetadata.data["exportedBy"] as? String) ?? "Unknown")", systemImage: "person.fill")
+                                Label("Exported at: \((importMetadata.data["exportedAt"] as? String) ?? "Unknown")", systemImage: "calendar")
+                                Label("Device: \((importMetadata.data["deviceName"] as? String) ?? "Unknown")", systemImage: "iphone")
+                                Label("System: \((importMetadata.data["systemVersion"] as? String) ?? "Unknown")", systemImage: "gear")
+                                Label("Items: \((importMetadata.data["totalItems"] as? Int).map { String($0) } ?? "-")", systemImage: "cube.box")
+                                Label("Images: \((importMetadata.data["totalImages"] as? Int).map { String($0) } ?? "-")", systemImage: "photo")
+                            }
+                            .font(.subheadline)
+                            .padding(.bottom, 4)
+
+                            Divider()
+
+                            // Collapsible Sections
+                            CollapsibleSection(title: "📂 Categories", color: .purple, items: (importMetadata.data["categories"] as? [String]) ?? [])
+                            CollapsibleSection(title: "📦 Box Names", color: .indigo, items: (importMetadata.data["boxNames"] as? [String]) ?? [])
                         }
-                        
+                        .padding()
                     }
-                    .padding()
-                }
-                .navigationTitle("Confirm Import")
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Replace Items", role: .destructive) {
+                    .background(Color.black.ignoresSafeArea())
+
+                    Divider()
+
+                    HStack {
+                        Button("Cancel") {
+                            pendingImportURL = nil
+                            importMetadata.data = [:]
+                            showImportSheet = false
+                        }
+                        .foregroundColor(.blue)
+                        Spacer()
+                        Button("Replace Items") {
                             if let url = pendingImportURL {
                                 importAllItems(from: url)
                             }
@@ -332,14 +351,10 @@ struct ManageItemsView: View {
                             importMetadata.data = [:]
                             showImportSheet = false
                         }
+                        .foregroundColor(.red)
                     }
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            pendingImportURL = nil
-                            importMetadata.data = [:]
-                            showImportSheet = false
-                        }
-                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
                 }
             }
         }
@@ -383,6 +398,10 @@ struct ManageItemsView: View {
                     modelContext.delete(item)
                 }
 
+                // Prepare deduplication maps
+                var boxMap: [String: Box] = [:]
+                var categoryMap: [String: Category] = [:]
+
                 // Import items
                 for raw in validRawItems {
                     let item = Item(
@@ -397,27 +416,33 @@ struct ManageItemsView: View {
                         item.imageData = try? Data(contentsOf: imagePath)
                     }
 
-                    // Box (V3 simplified)
+                    // Box (V3 simplified) with deduplication
                     if let boxName = raw["boxName"], !boxName.isEmpty {
-                        let descriptor = FetchDescriptor<Box>(predicate: #Predicate { $0.numberOrName == boxName })
-                        if let existingBox = try? modelContext.fetch(descriptor).first {
+                        if let cachedBox = boxMap[boxName] {
+                            item.box = cachedBox
+                        } else if let existingBox = try? modelContext.fetch(FetchDescriptor<Box>(predicate: #Predicate { $0.numberOrName == boxName })).first {
                             item.box = existingBox
+                            boxMap[boxName] = existingBox
                         } else {
                             let newBox = Box(numberOrName: boxName)
                             modelContext.insert(newBox)
                             item.box = newBox
+                            boxMap[boxName] = newBox
                         }
                     }
 
-                    // Category
+                    // Category with deduplication
                     if let categoryName = raw["categoryName"], !categoryName.isEmpty {
-                        let descriptor = FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == categoryName })
-                        if let existingCategory = try? modelContext.fetch(descriptor).first {
+                        if let cachedCategory = categoryMap[categoryName] {
+                            item.category = cachedCategory
+                        } else if let existingCategory = try? modelContext.fetch(FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == categoryName })).first {
                             item.category = existingCategory
+                            categoryMap[categoryName] = existingCategory
                         } else {
                             let newCategory = Category(categoryName: categoryName)
                             modelContext.insert(newCategory)
                             item.category = newCategory
+                            categoryMap[categoryName] = newCategory
                         }
                     }
 
@@ -425,6 +450,17 @@ struct ManageItemsView: View {
                 }
 
                 try? modelContext.save()
+                
+                // Show success alert after import
+                withAnimation {
+                    successMessage = "Items import completed successfully."
+                    showSuccessMessage = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation {
+                        showSuccessMessage = false
+                    }
+                }
 
             } catch {
                 print("Import failed: \(error.localizedDescription)")
@@ -631,3 +667,37 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
     return nil
 }
 
+
+struct CollapsibleSection: View {
+    let title: String
+    let color: Color
+    let items: [String]
+    @State private var isExpanded: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button(action: { withAnimation { isExpanded.toggle() } }) {
+                HStack {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(color)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .foregroundColor(.secondary)
+                }
+            }
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(items, id: \.self) { item in
+                        Text(item)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .padding(.leading, 8)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.top, 4)
+    }
+}

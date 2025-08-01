@@ -13,40 +13,59 @@ struct ManageLocationsView: View {
     @State private var showImportConfirmation = false
     @State private var showSuccessMessage = false
     @State private var successMessage = ""
+    @State private var isLoadingImport = false
 
     var body: some View {
         // Split the view building into smaller computed properties to help the compiler
         contentView
             .sheet(isPresented: $showImportConfirmation) {
-                if let meta = pendingImportMeta {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Import Locations Backup").font(.headline)
-                        Text("Exported by: \(meta["exportedBy"] as? String ?? "")")
-                        Text("Exported at: \(meta["exportedAt"] as? String ?? "")")
-                        Text("Device: \(meta["deviceName"] as? String ?? "") (\(meta["deviceModel"] as? String ?? ""))")
-                        Text("System: \(meta["systemVersion"] as? String ?? "")")
-                        Text("Total Locations: \(meta["totalLocations"] as? Int ?? 0)")
-                        Group {
-                            Text("Rooms:").font(.subheadline)
-                            ForEach(meta["rooms"] as? [String] ?? [], id: \.self) { Text($0) }
-                            Text("Sectors:").font(.subheadline)
-                            ForEach(meta["sectors"] as? [String] ?? [], id: \.self) { Text($0) }
-                            Text("Shelves:").font(.subheadline)
-                            ForEach(meta["shelves"] as? [String] ?? [], id: \.self) { Text($0) }
-                            Text("Box Names:").font(.subheadline)
-                            ForEach(meta["boxNames"] as? [String] ?? [], id: \.self) { Text($0) }
-                            Text("Box Types:").font(.subheadline)
-                            ForEach(meta["boxTypes"] as? [String] ?? [], id: \.self) { Text($0) }
+                if isLoadingImport {
+                    VStack {
+                        ProgressView("Loading import data…")
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .padding()
+                    }
+                } else if let meta = pendingImportMeta {
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Import Locations Backup")
+                                    .font(.largeTitle)
+                                    .bold()
+                                    .padding(.bottom, 8)
+                                
+                                Label("Exported by: \(meta["exportedBy"] as? String ?? "")", systemImage: "person.crop.circle")
+                                Label("Exported at: \(meta["exportedAt"] as? String ?? "")", systemImage: "calendar")
+                                Label("Device: \(meta["deviceName"] as? String ?? "")", systemImage: "desktopcomputer")
+                                Label("System: \(meta["systemVersion"] as? String ?? "")", systemImage: "gearshape")
+                                Label("Total Locations: \(meta["totalLocations"] as? Int ?? 0)", systemImage: "shippingbox")
+
+                            CollapsibleSection(title: "Rooms", color: .blue, items: meta["rooms"] as? [String] ?? [])
+                            CollapsibleSection(title: "Sectors", color: .blue, items: meta["sectors"] as? [String] ?? [])
+                            CollapsibleSection(title: "Shelves", color: .blue, items: meta["shelves"] as? [String] ?? [])
+                            CollapsibleSection(title: "Box Names", color: .blue, items: meta["boxNames"] as? [String] ?? [])
+                            CollapsibleSection(title: "Box Types", color: .blue, items: meta["boxTypes"] as? [String] ?? [])
+                            }
+                            .padding()
                         }
+                        .background(Color.black.ignoresSafeArea())
+
+                        Divider()
+
                         HStack {
                             Button("Cancel", role: .cancel) { showImportConfirmation = false }
+                                .foregroundColor(.blue)
+                            Spacer()
                             Button("Confirm Import", role: .destructive) {
                                 showImportConfirmation = false
                                 proceedWithImport()
                             }
-                        }.padding(.top)
+                            .foregroundColor(.red)
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
                     }
-                    .padding()
+                    .background(Color.black.ignoresSafeArea())
                 }
             }
     }
@@ -107,9 +126,38 @@ struct ManageLocationsView: View {
         for box in boxes {
             modelContext.delete(box)
         }
+
+        // Delete all rooms
+        if let allRooms = try? modelContext.fetch(FetchDescriptor<Room>()) {
+            for room in allRooms {
+                modelContext.delete(room)
+            }
+        }
+
+        // Delete all sectors
+        if let allSectors = try? modelContext.fetch(FetchDescriptor<Sector>()) {
+            for sector in allSectors {
+                modelContext.delete(sector)
+            }
+        }
+
+        // Delete all shelves
+        if let allShelves = try? modelContext.fetch(FetchDescriptor<Shelf>()) {
+            for shelf in allShelves {
+                modelContext.delete(shelf)
+            }
+        }
+
+        // Delete all box types
+        if let allBoxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>()) {
+            for type in allBoxTypes {
+                modelContext.delete(type)
+            }
+        }
+
         do {
             try modelContext.save()
-            successMessage = "All locations deleted. ✅ You can now import locations or start fresh manually."
+            successMessage = "All locations (boxes, rooms, sectors, shelves, and box types) deleted."
             withAnimation {
                 showSuccessMessage = true
             }
@@ -119,7 +167,7 @@ struct ManageLocationsView: View {
                 }
             }
         } catch {
-            print("Failed to delete all locations: \(error)")
+            print("Failed to delete locations: \(error)")
         }
     }
 
@@ -169,7 +217,26 @@ struct ManageLocationsView: View {
     private func handleFileImport(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
-            importLocations(from: url)
+            // Ensure we have permission to access the file
+            guard url.startAccessingSecurityScopedResource() else {
+                importResultMessage = "Failed to access file permission."
+                showImportResult = true
+                return
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+
+            let fileManager = FileManager.default
+            let tempFileURL = fileManager.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+            do {
+                if fileManager.fileExists(atPath: tempFileURL.path) {
+                    try fileManager.removeItem(at: tempFileURL)
+                }
+                try fileManager.copyItem(at: url, to: tempFileURL)
+                importLocations(from: tempFileURL)
+            } catch {
+                importResultMessage = "Failed to copy file for import: \(error.localizedDescription)"
+                showImportResult = true
+            }
         case .failure(let error):
             importResultMessage = "Import failed: \(error.localizedDescription)"
             showImportResult = true
@@ -201,19 +268,13 @@ struct ManageLocationsView: View {
             let boxType: String
         }
 
-        let exportBoxes: [ExportBox] = boxes.compactMap { box in
-            guard let room = box.room,
-                  let sector = box.sector,
-                  let shelf = box.shelf,
-                  let boxType = box.boxType else {
-                return nil
-            }
-            return ExportBox(
+        let exportBoxes: [ExportBox] = boxes.map { box in
+            ExportBox(
                 numberOrName: box.numberOrName,
-                room: room.roomName,
-                sector: sector.sectorName,
-                shelf: shelf.shelfName,
-                boxType: boxType.boxTypeText
+                room: box.room?.roomName ?? "",
+                sector: box.sector?.sectorName ?? "",
+                shelf: box.shelf?.shelfName ?? "",
+                boxType: box.boxType?.boxTypeText ?? ""
             )
         }
 
@@ -373,10 +434,14 @@ struct ManageLocationsView: View {
             let metaData = try Data(contentsOf: metaJsonURL)
             let jsonObject = try JSONSerialization.jsonObject(with: metaData, options: [])
             if let metaDict = jsonObject as? [String: Any] {
-                // Store meta and show confirmation UI
+                // Show loading spinner then meta confirmation UI
                 DispatchQueue.main.async {
-                    self.pendingImportMeta = metaDict
+                    self.isLoadingImport = true
                     self.showImportConfirmation = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.pendingImportMeta = metaDict
+                    self.isLoadingImport = false
                 }
             } else {
                 DispatchQueue.main.async {
@@ -465,15 +530,18 @@ struct ManageLocationsView: View {
                 return newBoxType
             }
 
-            // Insert boxes
+            // Insert boxes (handle incomplete location info)
             for impBox in importedBoxes {
                 let box = Box(numberOrName: impBox.numberOrName)
-                box.room = getOrCreateRoom(named: impBox.room)
-                box.sector = getOrCreateSector(named: impBox.sector)
-                box.shelf = getOrCreateShelf(named: impBox.shelf)
-                box.boxType = getOrCreateBoxType(named: impBox.boxType)
+                if !impBox.room.isEmpty { box.room = getOrCreateRoom(named: impBox.room) }
+                if !impBox.sector.isEmpty { box.sector = getOrCreateSector(named: impBox.sector) }
+                if !impBox.shelf.isEmpty { box.shelf = getOrCreateShelf(named: impBox.shelf) }
+                if !impBox.boxType.isEmpty { box.boxType = getOrCreateBoxType(named: impBox.boxType) }
                 modelContext.insert(box)
             }
+
+            // Removed automatic creation of "Unboxed" box to respect import data
+            // Now, "Unboxed" will only exist if included in the imported locations.json
 
             try modelContext.save()
             importResultMessage = "Import successful."
