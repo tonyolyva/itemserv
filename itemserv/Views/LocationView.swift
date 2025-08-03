@@ -89,36 +89,42 @@ struct LocationView: View {
             break
         }
     }
-
+    
+    // MARK: - Sorting Logic
     private func sortedBoxes() -> [Box] {
         switch sortSelection {
-        case 0:
-            return boxes.sorted { ($0.lastModified) > ($1.lastModified) }
-        case 1:
-            return boxes.sorted { $0.numberOrName.localizedStandardCompare($1.numberOrName) == .orderedAscending }
-        case 2:
-            return boxes.sorted { $0.numberOrName.localizedStandardCompare($1.numberOrName) == .orderedDescending }
+        case 0: // Recent
+            return boxes.sorted { effectiveActivityDate(for: $0) > effectiveActivityDate(for: $1) }
+        case 1: // A → Z
+            return boxes.sorted { $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending }
+        case 2: // Z → A
+            return boxes.sorted { $0.numberOrName.localizedCompare($1.numberOrName) == .orderedDescending }
         default:
             return boxes
         }
     }
+    
+    private func effectiveActivityDate(for box: Box) -> Date {
+        let itemsArray = Array(box.items ?? [])
+        let itemActivityDate = itemsArray.map { $0.dateAdded }.max() ?? .distantPast
+        let effectiveDate = max(box.lastModified, itemActivityDate)
+        print("Effective date for box \(box.numberOrName): \(effectiveDate)")
+        return effectiveDate
+    }
 
     private func prefixForBox(_ box: Box) -> String {
-        if box.lastModified > box.dateAdded {
-            return "✏️"
-        }
-        return "🆕"
+        let activityDate = effectiveActivityDate(for: box)
+        return activityDate == box.dateAdded ? "🆕" : "✏️"
     }
 
     private func relativeUpdateText(for box: Box) -> String {
-        let referenceDate = box.lastModified
+        let referenceDate = effectiveActivityDate(for: box)
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: referenceDate, relativeTo: Date())
     }
 }
 
-#Preview {
-    LocationView()
-        .modelContainer(sharedModelContainer)
-}
+    private func handleBoxUpdate(_ box: Box) {
+        print("Box \(box.numberOrName) was updated. lastModified: \(box.lastModified)")
+    }

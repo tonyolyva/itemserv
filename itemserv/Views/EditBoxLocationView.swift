@@ -1,6 +1,5 @@
-
-
 import SwiftUI
+import Combine
 import SwiftData
 
 struct EditBoxLocationView: View {
@@ -37,7 +36,7 @@ struct EditBoxLocationView: View {
                         }
                     }
                 }
-                
+
                 Section(header: Text("Sector")) {
                     Picker("Sector", selection: $selectedSector) {
                         ForEach(sectors) { sector in
@@ -66,10 +65,7 @@ struct EditBoxLocationView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        box.room = selectedRoom
-                        box.sector = selectedSector
-                        box.shelf = selectedShelf
-                        box.boxType = selectedBoxType
+                        updateBoxLocation()
                         dismiss()
                     }
                 }
@@ -81,6 +77,40 @@ struct EditBoxLocationView: View {
             }
         }
     }
+    
+    private func updateBoxLocation() {
+        let locationChanged = box.room != selectedRoom ||
+                              box.sector != selectedSector ||
+                              box.shelf != selectedShelf ||
+                              box.boxType != selectedBoxType
+        
+        if locationChanged {
+            box.room = selectedRoom
+            box.sector = selectedSector
+            box.shelf = selectedShelf
+            box.boxType = selectedBoxType
+            
+            // Update timestamp
+            box.lastModified = Date()
+            print("Box location updated. lastModified set to: \(box.lastModified)")
+            
+            // Save and validate persistence
+            do {
+                try modelContext.save()
+                print("Box saved successfully: \(box.numberOrName)")
+            } catch {
+                print("Failed to save box changes: \(error)")
+            }
+            
+            // Trigger UI refresh
+            NotificationCenter.default.post(name: .refreshLocationsView, object: nil)
+        }
+    }
+}
+
+// Notification extension
+extension Notification.Name {
+    static let refreshLocationsView = Notification.Name("refreshLocationsView")
 }
 
 #Preview {
