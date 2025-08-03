@@ -12,11 +12,14 @@ struct EditBoxLocationView: View {
     @Query(sort: \Sector.sectorName) private var sectors: [Sector]
     @Query(sort: \Shelf.shelfName) private var shelves: [Shelf]
     @Query(sort: \BoxType.boxTypeText) private var boxTypes: [BoxType]
+    @Query(sort: \Box.numberOrName) private var allBoxes: [Box]
     
     @State private var selectedRoom: Room?
     @State private var selectedSector: Sector?
     @State private var selectedShelf: Shelf?
     @State private var selectedBoxType: BoxType?
+    @State private var targetBox: Box? = nil
+    @State private var showMoveConfirmation: Bool = false
     
     init(box: Box) {
         self.box = box
@@ -60,6 +63,21 @@ struct EditBoxLocationView: View {
                         }
                     }
                 }
+                
+                // New section for selecting a target box to move/merge items
+                Section(header: Text("Move Items to Another Box")) {
+                    Picker("Target Box", selection: $targetBox) {
+                        Text("None").tag(Optional<Box>(nil))
+                        ForEach(allBoxes.filter { $0.id != box.id }) { candidateBox in
+                            Text(candidateBox.numberOrName).tag(Optional(candidateBox))
+                        }
+                    }
+                    .onChange(of: targetBox) { newValue in
+                        if let target = newValue {
+                            showMoveConfirmation = true
+                        }
+                    }
+                }
             }
             .navigationTitle("Edit Location")
             .toolbar {
@@ -74,6 +92,25 @@ struct EditBoxLocationView: View {
                         dismiss()
                     }
                 }
+            }
+            .alert(isPresented: $showMoveConfirmation) {
+                let targetItemCount = (try? modelContext.fetch(FetchDescriptor<Item>()).filter { $0.box?.id == targetBox?.id }.count) ?? 0
+                let isMerge = targetItemCount > 0
+                let actionText = isMerge ? "Merge" : "Move"
+                let message = isMerge
+                    ? "Merge all items from \(box.numberOrName) into \(targetBox?.numberOrName ?? "")? Target box already contains \(targetItemCount) items."
+                    : "Move all items from \(box.numberOrName) to \(targetBox?.numberOrName ?? "")?"
+                
+                return Alert(
+                    title: Text(isMerge ? "Merge Items" : "Move Items"),
+                    message: Text(message),
+                    primaryButton: .destructive(Text(actionText)) {
+                        performBatchMove()
+                    },
+                    secondaryButton: .cancel {
+                        targetBox = nil
+                    }
+                )
             }
         }
     }
@@ -104,6 +141,39 @@ struct EditBoxLocationView: View {
             
             // Trigger UI refresh
             NotificationCenter.default.post(name: .refreshLocationsView, object: nil)
+        }
+    }
+    
+    private func performBatchMove() {
+        guard let target = targetBox else { return }
+        
+        do {
+            // Fetch all items, then filter manually to avoid predicate errors
+            let allItems = try modelContext.fetch(FetchDescriptor<Item>())
+            let itemsToMove = allItems.filter { $0.box?.id == box.id }
+            
+            print("Found \(itemsToMove.count) items in box \(box.numberOrName) to move.")
+            
+            // Move each item to the target box
+            for item in itemsToMove {
+                item.box = target
+                print("Item \(item.name) moved to box \(target.numberOrName).")
+            }
+            
+            // Update timestamps for both boxes
+            let now = Date()
+            target.lastModified = now
+            box.lastModified = now
+            
+            try modelContext.save()
+            print("Batch move complete: \(itemsToMove.count) items moved from \(box.numberOrName) to \(target.numberOrName).")
+            
+            // Notify UI to refresh
+            NotificationCenter.default.post(name: .refreshLocationsView, object: nil)
+            targetBox = nil
+            
+        } catch {
+            print("Error during batch move: \(error)")
         }
     }
 }
