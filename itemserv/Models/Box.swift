@@ -8,7 +8,9 @@ class Box {
     @Relationship var room: Room?
     @Relationship var sector: Sector?
     @Relationship var shelf: Shelf?
-    @Relationship(inverse: \Item.box) var items: [Item]?  // ✅ Made optional for CloudKit
+@Relationship(inverse: \Item.box) var items: [Item]?  // ✅ Made optional for CloudKit
+    @Attribute var dateAdded: Date = Date()         // ✅ Track when box was created
+    @Attribute var lastModified: Date = Date()      // ✅ Track when box was last modified
 
     init(numberOrName: String = "", boxType: BoxType? = nil, room: Room? = nil, sector: Sector? = nil, shelf: Shelf? = nil) {
         self.numberOrName = numberOrName
@@ -16,6 +18,8 @@ class Box {
         self.room = room
         self.sector = sector
         self.shelf = shelf
+        self.dateAdded = Date()
+        self.lastModified = Date()
     }
 
     var isEmpty: Bool {

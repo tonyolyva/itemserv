@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct ManageLocationsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -14,6 +15,7 @@ struct ManageLocationsView: View {
     @State private var showSuccessMessage = false
     @State private var successMessage = ""
     @State private var isLoadingImport = false
+    @State private var showInfo = false // Info toggle for inline 🆕/✏️ display
 
     var body: some View {
         // Split the view building into smaller computed properties to help the compiler
@@ -120,6 +122,13 @@ struct ManageLocationsView: View {
                 Spacer()
             }
         )
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showInfo.toggle() }) {
+                    Label("Info", systemImage: "info.circle\(showInfo ? ".fill" : "")")
+                }
+            }
+        }
     }
     private func deleteAllLocations() {
         // Delete all boxes (locations)
@@ -171,11 +180,20 @@ struct ManageLocationsView: View {
         }
     }
 
-    @ViewBuilder
     private func locationRow(for box: Box) -> some View {
         VStack(alignment: .leading) {
-            Text(box.numberOrName)
-                .font(.headline)
+            HStack {
+                Text(box.numberOrName)
+                    .font(.headline)
+                Spacer()
+                if showInfo {
+                    if let prefix = infoPrefix(for: box) {
+                        Text("\(prefix) \(relativeUpdateText(for: box))")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
 
             if let room = box.room,
                let sector = box.sector,
@@ -188,6 +206,26 @@ struct ManageLocationsView: View {
                     .foregroundColor(.red)
             }
         }
+        .onAppear {
+            print("DEBUG: Box \(box.numberOrName) dateAdded: \(box.dateAdded), lastModified: \(box.lastModified)")
+        }
+    }
+
+    private func infoPrefix(for box: Box) -> String? {
+        if box.lastModified > box.dateAdded {
+            return "✏️"
+        } else {
+            return "🆕"
+        }
+    }
+
+    private func relativeUpdateText(for box: Box) -> String {
+        let referenceDate = max(box.dateAdded, box.lastModified)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        let relative = formatter.localizedString(for: referenceDate, relativeTo: Date())
+        print("DEBUG: Box \(box.numberOrName) relative time: \(relative)")
+        return relative
     }
 
     private func locationDetails(room: Room, sector: Sector, shelf: Shelf, boxType: BoxType) -> some View {
