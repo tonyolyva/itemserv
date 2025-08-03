@@ -68,9 +68,35 @@ struct EditItemView: View {
                     if item.barcodeValue.trimmingCharacters(in: .whitespaces).isEmpty {
                         item.barcodeValue = generateRandomEAN13()
                     }
+                    
+                    // Detect if box changed (move scenario)
+                    let oldBox = item.box
+                    let newBox = selectedBox
+                    
                     item.category = selectedCategory
-                    item.box = selectedBox
+                    item.box = newBox
                     item.lastUpdated = Date()
+                    
+                    if oldBox?.id != newBox?.id {
+                        // Update timestamps
+                        if let oldBox {
+                            oldBox.lastModified = Date()
+                            print("Updated lastModified for old box: \(oldBox.numberOrName)")
+                        }
+                        if let newBox {
+                            newBox.lastModified = Date()
+                            print("Updated lastModified for new box: \(newBox.numberOrName)")
+                        }
+                        
+                        // Post notification for LocationView to refresh
+                        NotificationCenter.default.post(
+                            name: Notification.Name("boxItemMoved"),
+                            object: nil,
+                            userInfo: ["oldBox": oldBox as Any, "newBox": newBox as Any]
+                        )
+                    }
+                    
+                    try? modelContext.save() // Persist changes
                     dismiss()
                 } label: {
                     Label("Done", systemImage: "checkmark")
