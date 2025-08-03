@@ -72,8 +72,8 @@ struct EditBoxLocationView: View {
                             Text(candidateBox.numberOrName).tag(Optional(candidateBox))
                         }
                     }
-                    .onChange(of: targetBox) { newValue in
-                        if let target = newValue {
+                    .onChange(of: targetBox) {
+                        if targetBox != nil {
                             showMoveConfirmation = true
                         }
                     }
