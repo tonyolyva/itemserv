@@ -13,12 +13,25 @@ struct ManageBoxesView: View {
     @State private var isShowingExportSheet = false
 
     var filteredBoxes: [Box] {
-        let names = boxes.map { ($0, $0.numberOrName.lowercased()) }
-        let sorted = sortAscending
-            ? names.sorted { $0.1 < $1.1 }
-            : names.sorted { $0.1 > $1.1 }
-        let results = sorted.map { $0.0 }
-
+        // Separate "Unboxed"
+        let unboxed = boxes.filter { $0.numberOrName == "Unboxed" }
+        let others = boxes.filter { $0.numberOrName != "Unboxed" }
+        
+        // Sort numerically if possible, otherwise alphabetically
+        let sortedOthers = others.sorted {
+            let num1 = Int($0.numberOrName)
+            let num2 = Int($1.numberOrName)
+            if let n1 = num1, let n2 = num2 {
+                return sortAscending ? (n1 < n2) : (n1 > n2)
+            } else {
+                return sortAscending
+                    ? $0.numberOrName.localizedCaseInsensitiveCompare($1.numberOrName) == .orderedAscending
+                    : $0.numberOrName.localizedCaseInsensitiveCompare($1.numberOrName) == .orderedDescending
+            }
+        }
+        
+        let results = unboxed + sortedOthers
+        
         if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return results
         } else {

@@ -85,9 +85,7 @@ struct EditBoxLocationView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("for \(box.numberOrName == "Unboxed" ? "Unboxed" : "Box \(box.numberOrName)")")
-//                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
-//                        .frame(alignment: .leading)
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
