@@ -96,9 +96,27 @@ struct LocationView: View {
         case 0: // Recent
             return boxes.sorted { effectiveActivityDate(for: $0) > effectiveActivityDate(for: $1) }
         case 1: // A → Z
-            return boxes.sorted { $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending }
+            return boxes.sorted {
+                if $0.numberOrName == "Unboxed" { return true }
+                if $1.numberOrName == "Unboxed" { return false }
+                let num0 = Int($0.numberOrName)
+                let num1 = Int($1.numberOrName)
+                if let n0 = num0, let n1 = num1 {
+                    return n0 < n1
+                }
+                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending
+            }
         case 2: // Z → A
-            return boxes.sorted { $0.numberOrName.localizedCompare($1.numberOrName) == .orderedDescending }
+            return boxes.sorted {
+                if $0.numberOrName == "Unboxed" { return true }
+                if $1.numberOrName == "Unboxed" { return false }
+                let num0 = Int($0.numberOrName)
+                let num1 = Int($1.numberOrName)
+                if let n0 = num0, let n1 = num1 {
+                    return n0 > n1
+                }
+                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedDescending
+            }
         default:
             return boxes
         }
