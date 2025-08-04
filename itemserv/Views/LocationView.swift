@@ -21,7 +21,7 @@ struct LocationView: View {
 
 // Moved Filter buttons under Sort buttons line
 
-                // Sorting and Info buttons
+// Sorting and Info buttons
                 HStack {
                     Picker("Sort", selection: $sortSelection) {
                         Text("Recent").tag(0)
@@ -45,22 +45,16 @@ struct LocationView: View {
                 }
                 .padding(.horizontal)
 
-                // Filter buttons moved here under Sort buttons
-                HStack {
-                    FilterButton(title: "All Boxes", isSelected: selectedFilter == .all) {
-                        selectedFilter = .all
-                    }
-                    FilterButton(title: "Unboxed", isSelected: selectedFilter == .unboxed) {
-                        selectedFilter = .unboxed
-                    }
-                    FilterButton(title: "Exclude Empty", isSelected: selectedFilter == .excludeEmpty) {
-                        selectedFilter = .excludeEmpty
-                    }
-                    FilterButton(title: "Empty Only", isSelected: selectedFilter == .emptyOnly) {
-                        selectedFilter = .emptyOnly
-                    }
-                    Spacer()
+                // Use segmented picker style for filters similar to BoxLinkedItemsView
+                Picker("Filter Boxes", selection: $selectedFilter) {
+                    Text("All Boxes").tag(BoxFilter.all)
+                    Text("Unboxed").tag(BoxFilter.unboxed)
+                    Text("Exclude Empty").tag(BoxFilter.excludeEmpty)
+                    Text("Empty Only").tag(BoxFilter.emptyOnly)
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 4)
 
                 List {
                     ForEach(filteredBoxes()) { box in
@@ -238,10 +232,16 @@ struct FilterButton: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline)
-                .padding(8)
-                .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                .lineLimit(1) // Limit text to one line
+                .truncationMode(.tail) // Add ellipsis if text doesn't fit
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color.accentColor.opacity(0.2) : Color.gray.opacity(0.2))
+                .foregroundColor(isSelected ? .primary : .secondary)
                 .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 0) // Removed extra horizontal gaps between buttons
+        .frame(maxWidth: .infinity, alignment: .leading) // Stretch buttons block to fill width without right padding
     }
 }
