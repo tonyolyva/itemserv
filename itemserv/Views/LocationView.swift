@@ -6,10 +6,18 @@ struct LocationView: View {
     @State private var selectedBox: Box?
     @State private var sortSelection: Int = 0
     @State private var showInfo: Bool = false
+    @State private var searchText: String = ""
 
     var body: some View {
         NavigationStack {
             VStack {
+                // Search field
+                HStack {
+                    TextField("Search Boxes", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+                }
+
                 // Sorting and Info buttons
                 HStack {
                     Picker("Sort", selection: $sortSelection) {
@@ -35,7 +43,7 @@ struct LocationView: View {
                 .padding(.horizontal)
 
                 List {
-                    ForEach(sortedBoxes()) { box in
+                    ForEach(filteredBoxes()) { box in
                         Button {
                             selectedBox = box
                         } label: {
@@ -140,6 +148,41 @@ struct LocationView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: referenceDate, relativeTo: Date())
+    }
+    
+    // MARK: - Filtering Logic
+    private func filteredBoxes() -> [Box] {
+        let filtered = boxes.filter { box in
+            searchText.isEmpty || box.numberOrName.localizedCaseInsensitiveContains(searchText)
+        }
+        switch sortSelection {
+        case 0:
+            return filtered.sorted { effectiveActivityDate(for: $0) > effectiveActivityDate(for: $1) }
+        case 1:
+            return filtered.sorted {
+                if $0.numberOrName == "Unboxed" { return true }
+                if $1.numberOrName == "Unboxed" { return false }
+                let num0 = Int($0.numberOrName)
+                let num1 = Int($1.numberOrName)
+                if let n0 = num0, let n1 = num1 {
+                    return n0 < n1
+                }
+                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedAscending
+            }
+        case 2:
+            return filtered.sorted {
+                if $0.numberOrName == "Unboxed" { return true }
+                if $1.numberOrName == "Unboxed" { return false }
+                let num0 = Int($0.numberOrName)
+                let num1 = Int($1.numberOrName)
+                if let n0 = num0, let n1 = num1 {
+                    return n0 > n1
+                }
+                return $0.numberOrName.localizedCompare($1.numberOrName) == .orderedDescending
+            }
+        default:
+            return filtered
+        }
     }
 }
 
