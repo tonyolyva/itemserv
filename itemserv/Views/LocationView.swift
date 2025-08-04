@@ -8,6 +8,9 @@ struct LocationView: View {
     @State private var showInfo: Bool = false
     @State private var searchText: String = ""
     @State private var selectedFilter: BoxFilter = .all
+    @State private var isScannerPresented: Bool = false
+    @State private var scannedBox: Box?
+    @State private var highlightedBox: Box?
 
     var body: some View {
         NavigationStack {
@@ -16,8 +19,15 @@ struct LocationView: View {
                 HStack {
                     TextField("Search Boxes", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
+                    Button(action: {
+                        isScannerPresented = true
+                    }) {
+                        Image(systemName: "barcode.viewfinder")
+                            .imageScale(.large)
+                            .padding(.leading, 4)
+                    }
                 }
+                .padding(.horizontal)
 
 // Moved Filter buttons under Sort buttons line
 
@@ -57,7 +67,7 @@ struct LocationView: View {
                 .padding(.top, 4)
 
                 List {
-                    ForEach(filteredBoxes()) { box in
+                    ForEach(filteredBoxes) { box in
                         Button {
                             selectedBox = box
                         } label: {
@@ -89,10 +99,19 @@ struct LocationView: View {
                                 }
                             }
                         }
+                        .background(highlightedBox == box ? Color.yellow.opacity(0.3) : Color.clear)
                     }
                 }
             }
             .navigationTitle("Manage Location")
+            .sheet(isPresented: $isScannerPresented) {
+                BarcodeScannerView { scannedCode in
+                    handleScannedBarcode(scannedCode)
+                }
+            }
+            .sheet(item: $scannedBox) { box in
+                EditBoxLocationView(box: box)
+            }
             .sheet(item: $selectedBox) { box in
                 EditBoxLocationView(box: box)
             }
@@ -165,7 +184,7 @@ struct LocationView: View {
     }
     
     // MARK: - Filtering Logic
-    private func filteredBoxes() -> [Box] {
+    private var filteredBoxes: [Box] {
         var filtered = boxes.filter { box in
             searchText.isEmpty || box.numberOrName.localizedCaseInsensitiveContains(searchText)
         }
@@ -243,5 +262,36 @@ struct FilterButton: View {
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal, 0) // Removed extra horizontal gaps between buttons
         .frame(maxWidth: .infinity, alignment: .leading) // Stretch buttons block to fill width without right padding
+    }
+}
+
+// MARK: - Scanner Helper
+extension LocationView {
+    fileprivate func handleScannedBarcode(_ code: String) {
+        if let matchedBox = (filteredBoxes + boxes).first(where: { $0.numberOrName == code }) {
+            // Haptic feedback for success
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            
+            // Highlight the matched box
+            withAnimation(.easeInOut(duration: 0.2)) {
+                highlightedBox = matchedBox
+            }
+            
+            // Dismiss scanner and then open EditBoxLocationView after short delay
+            isScannerPresented = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut) {
+                    self.scannedBox = matchedBox
+                    self.highlightedBox = nil
+                }
+            }
+            print("Scanned box matched: \(matchedBox.numberOrName)")
+        } else {
+            // Haptic feedback for failure
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.error)
+            print("No box found for scanned code: \(code)")
+        }
     }
 }
