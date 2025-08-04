@@ -7,6 +7,7 @@ struct LocationView: View {
     @State private var sortSelection: Int = 0
     @State private var showInfo: Bool = false
     @State private var searchText: String = ""
+    @State private var selectedFilter: BoxFilter = .all
 
     var body: some View {
         NavigationStack {
@@ -17,6 +18,8 @@ struct LocationView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .padding(.horizontal)
                 }
+
+// Moved Filter buttons under Sort buttons line
 
                 // Sorting and Info buttons
                 HStack {
@@ -41,6 +44,23 @@ struct LocationView: View {
                     }
                 }
                 .padding(.horizontal)
+
+                // Filter buttons moved here under Sort buttons
+                HStack {
+                    FilterButton(title: "All Boxes", isSelected: selectedFilter == .all) {
+                        selectedFilter = .all
+                    }
+                    FilterButton(title: "Unboxed", isSelected: selectedFilter == .unboxed) {
+                        selectedFilter = .unboxed
+                    }
+                    FilterButton(title: "Exclude Empty", isSelected: selectedFilter == .excludeEmpty) {
+                        selectedFilter = .excludeEmpty
+                    }
+                    FilterButton(title: "Empty Only", isSelected: selectedFilter == .emptyOnly) {
+                        selectedFilter = .emptyOnly
+                    }
+                    Spacer()
+                }
 
                 List {
                     ForEach(filteredBoxes()) { box in
@@ -152,9 +172,21 @@ struct LocationView: View {
     
     // MARK: - Filtering Logic
     private func filteredBoxes() -> [Box] {
-        let filtered = boxes.filter { box in
+        var filtered = boxes.filter { box in
             searchText.isEmpty || box.numberOrName.localizedCaseInsensitiveContains(searchText)
         }
+        
+        switch selectedFilter {
+        case .all:
+            break
+        case .unboxed:
+            filtered = filtered.filter { $0.numberOrName == "Unboxed" }
+        case .excludeEmpty:
+            filtered = filtered.filter { !($0.items?.isEmpty ?? true) }
+        case .emptyOnly:
+            filtered = filtered.filter { $0.items?.isEmpty ?? true }
+        }
+        
         switch sortSelection {
         case 0:
             return filtered.sorted { effectiveActivityDate(for: $0) > effectiveActivityDate(for: $1) }
@@ -186,6 +218,30 @@ struct LocationView: View {
     }
 }
 
-    private func handleBoxUpdate(_ box: Box) {
-        print("Box \(box.numberOrName) was updated. lastModified: \(box.lastModified)")
+private func handleBoxUpdate(_ box: Box) {
+    print("Box \(box.numberOrName) was updated. lastModified: \(box.lastModified)")
+}
+
+enum BoxFilter {
+    case all
+    case unboxed
+    case excludeEmpty
+    case emptyOnly
+}
+
+struct FilterButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .padding(8)
+                .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
+}
