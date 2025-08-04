@@ -32,6 +32,7 @@ struct EditBoxLocationView: View {
     var body: some View {
         NavigationStack {
             Form {
+
                 Section(header: Text("Room")) {
                     Picker("Room", selection: $selectedRoom) {
                         ForEach(rooms) { room in
@@ -80,6 +81,20 @@ struct EditBoxLocationView: View {
                 }
             }
             .navigationTitle("Edit Location")
+            .padding(.top, 8)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("for \(box.numberOrName == "Unboxed" ? "Unboxed" : "Box \(box.numberOrName)")")
+//                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+//                        .frame(alignment: .leading)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                        .padding(.leading, 18)
+                }
+                .background(Color(.systemBackground))
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
