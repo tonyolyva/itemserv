@@ -188,9 +188,20 @@ struct ManageItemsView: View {
                             
                             // First pass: import only metadata files
                             for file in fileList {
-                                if file.lastPathComponent == "categories.json" {
+                                let name = file.lastPathComponent
+                                let lowerName = name.lowercased()
+                                if lowerName == "categories.json" {
                                     let data = try Data(contentsOf: file)
-                                    if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
+                                    // Try to decode as array of strings (new format)
+                                    if let names = try? JSONSerialization.jsonObject(with: data) as? [String] {
+                                        for name in names {
+                                            let existing = try modelContext.fetch(FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == name }))
+                                            if existing.isEmpty {
+                                                modelContext.insert(Category(categoryName: name))
+                                            }
+                                        }
+                                    } else if let objects = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] {
+                                        // Fallback to array of dicts (old format)
                                         for obj in objects {
                                             if let name = obj["categoryName"] {
                                                 let existing = try modelContext.fetch(FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == name }))
@@ -200,7 +211,7 @@ struct ManageItemsView: View {
                                             }
                                         }
                                     }
-                                } else if file.lastPathComponent == "rooms.json" {
+                                } else if lowerName == "rooms.json" {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
@@ -212,7 +223,7 @@ struct ManageItemsView: View {
                                             }
                                         }
                                     }
-                                } else if file.lastPathComponent == "sectors.json" {
+                                } else if lowerName == "sectors.json" {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
@@ -224,7 +235,7 @@ struct ManageItemsView: View {
                                             }
                                         }
                                     }
-                                } else if file.lastPathComponent == "shelves.json" {
+                                } else if lowerName == "shelves.json" {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
@@ -236,7 +247,7 @@ struct ManageItemsView: View {
                                             }
                                         }
                                     }
-                                } else if file.lastPathComponent.lowercased() == "box_names.json" {
+                                } else if lowerName == "box_names.json" {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
@@ -248,7 +259,7 @@ struct ManageItemsView: View {
                                             }
                                         }
                                     }
-                                } else if file.lastPathComponent.lowercased() == "box_types.json" {
+                                } else if lowerName == "box_types.json" {
                                     let data = try Data(contentsOf: file)
                                     if let objects = try JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                                         for obj in objects {
@@ -384,18 +395,40 @@ struct ManageItemsView: View {
                 try FileManager.default.unzipItem(at: url, to: tempDir)
                 let jsonURL = tempDir.appendingPathComponent("items.json")
                 let data = try Data(contentsOf: jsonURL)
+
+                // Clear existing items
+                let existingItems = try modelContext.fetch(FetchDescriptor<Item>())
+                for item in existingItems {
+                    modelContext.delete(item)
+                }
+
+                // Clear existing categories
+                let existingCategories = try modelContext.fetch(FetchDescriptor<Category>())
+                for category in existingCategories {
+                    modelContext.delete(category)
+                }
+
+                // Re-import all categories from meta.json (including unused ones)
+                let metaFileURL = tempDir.appendingPathComponent("meta.json")
+                if FileManager.default.fileExists(atPath: metaFileURL.path) {
+                    let metaData = try Data(contentsOf: metaFileURL)
+                    if let metaDict = try JSONSerialization.jsonObject(with: metaData) as? [String: Any],
+                       let categoryNames = metaDict["categories"] as? [String] {
+                        for name in categoryNames {
+                            let existing = try modelContext.fetch(FetchDescriptor<Category>(predicate: #Predicate { $0.categoryName == name }))
+                            if existing.isEmpty {
+                                modelContext.insert(Category(categoryName: name))
+                            }
+                        }
+                    }
+                }
+
                 guard let rawItems = try JSONSerialization.jsonObject(with: data) as? [[String: String]] else { return }
 
                 // Filter out invalid names
                 let validRawItems = rawItems.filter {
                     let name = $0["name"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                     return !name.isEmpty
-                }
-
-                // Clear existing items
-                let existingItems = try modelContext.fetch(FetchDescriptor<Item>())
-                for item in existingItems {
-                    modelContext.delete(item)
                 }
 
                 // Prepare deduplication maps
@@ -585,11 +618,18 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         try finalTSV.write(to: tsvURL, atomically: true, encoding: .utf8)
         // --- End items.tsv ---
 
-        let categories = (try? modelContext.fetch(FetchDescriptor<Category>()).map { $0.categoryName }) ?? []
+        var categories = (try? modelContext.fetch(FetchDescriptor<Category>()).compactMap { $0.categoryName }) ?? []
+        categories.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+
         let rooms = (try? modelContext.fetch(FetchDescriptor<Room>()).map { $0.roomName }) ?? []
         let sectors = (try? modelContext.fetch(FetchDescriptor<Sector>()).map { $0.sectorName }) ?? []
         let shelves = (try? modelContext.fetch(FetchDescriptor<Shelf>()).map { $0.shelfName }) ?? []
-        let boxNames = (try? modelContext.fetch(FetchDescriptor<Box>()).map { $0.numberOrName }) ?? []
+        var boxNames = (try? modelContext.fetch(FetchDescriptor<Box>()).map { $0.numberOrName }) ?? []
+        boxNames.sort { lhs, rhs in
+            if lhs == "Unboxed" { return true }
+            if rhs == "Unboxed" { return false }
+            return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
         let boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>()).map { $0.boxTypeText }) ?? []
 
 // Simplified meta.json export with fewer keys (V3)
@@ -633,7 +673,15 @@ private func generateExport(modelContext: ModelContext) async -> URL? {
         let metaTSVURL = tempDir.appendingPathComponent("meta.tsv")
         var metaTSVRows: [String] = ["key\tvalue"]
         for key in metaKeyOrder {
-            if let array = metaValues[key] as? [String] {
+            if key == "categories", !categories.isEmpty {
+                for element in categories {
+                    metaTSVRows.append("\(key)\t\(element)")
+                }
+            } else if key == "boxNames", !boxNames.isEmpty {
+                for element in boxNames {
+                    metaTSVRows.append("\(key)\t\(element)")
+                }
+            } else if let array = metaValues[key] as? [String] {
                 for element in array {
                     metaTSVRows.append("\(key)\t\(element)")
                 }

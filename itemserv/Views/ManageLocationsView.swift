@@ -293,118 +293,126 @@ struct ManageLocationsView: View {
         }
     }
 
-    // MARK: - Export
+    // MARK: - Export (V3.2 All-Inclusive)
     private func exportLocations() {
-        // Fetch all boxes with their related Room, Sector, Shelf, and BoxType
-        // For this we already have `boxes` from the @Query property wrapper
-        // Prepare the export data
-        struct ExportBox: Codable {
-            let numberOrName: String
-            let room: String
-            let sector: String
-            let shelf: String
-            let boxType: String
-        }
-
-        let exportBoxes: [ExportBox] = boxes.map { box in
-            ExportBox(
-                numberOrName: box.numberOrName,
-                room: box.room?.roomName ?? "",
-                sector: box.sector?.sectorName ?? "",
-                shelf: box.shelf?.shelfName ?? "",
-                boxType: box.boxType?.boxTypeText ?? ""
-            )
-        }
-
-        // Encode to JSON
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        guard let jsonData = try? encoder.encode(exportBoxes) else {
-            return
-        }
-
         let fileManager = FileManager.default
         let tempDirectory = fileManager.temporaryDirectory
         let exportFolderURL = tempDirectory.appendingPathComponent("locations_export", isDirectory: true)
 
-        // Create export folder
+        // Clean/create export folder
         do {
             if fileManager.fileExists(atPath: exportFolderURL.path) {
                 try fileManager.removeItem(at: exportFolderURL)
             }
             try fileManager.createDirectory(at: exportFolderURL, withIntermediateDirectories: true)
-        } catch {
-            return
+        } catch { return }
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+
+        // Export boxes (locations)
+        struct ExportBox: Codable { let numberOrName, room, sector, shelf, boxType: String }
+        let exportBoxes = boxes.map {
+            ExportBox(
+                numberOrName: $0.numberOrName,
+                room: $0.room?.roomName ?? "",
+                sector: $0.sector?.sectorName ?? "",
+                shelf: $0.shelf?.shelfName ?? "",
+                boxType: $0.boxType?.boxTypeText ?? ""
+            )
+        }
+        if let data = try? encoder.encode(exportBoxes) {
+            // Manually build JSON with desired field order
+            let decoder = JSONDecoder()
+            if let boxesDecoded = try? decoder.decode([ExportBox].self, from: data) {
+                var jsonString = "[\n"
+                for (index, box) in boxesDecoded.enumerated() {
+                    jsonString += "  {\n"
+                    jsonString += "    \"room\" : \"\(box.room)\",\n"
+                    jsonString += "    \"sector\" : \"\(box.sector)\",\n"
+                    jsonString += "    \"shelf\" : \"\(box.shelf)\",\n"
+                    jsonString += "    \"numberOrName\" : \"\(box.numberOrName)\",\n"
+                    jsonString += "    \"boxType\" : \"\(box.boxType)\"\n"
+                    jsonString += "  }"
+                    if index < boxesDecoded.count - 1 { jsonString += "," }
+                    jsonString += "\n"
+                }
+                jsonString += "]\n"
+                try? jsonString.data(using: .utf8)?.write(to: exportFolderURL.appendingPathComponent("locations.json"))
+            }
         }
 
-        // Write locations.json
-        let jsonFileURL = exportFolderURL.appendingPathComponent("locations.json")
-        do {
-            try jsonData.write(to: jsonFileURL, options: .atomic)
-        } catch {
-            return
+        // Export rooms, sectors, shelves, boxTypes as standalone lists
+        func exportList<T: Codable>(_ items: [T], fileName: String) {
+            if let data = try? encoder.encode(items) {
+                try? data.write(to: exportFolderURL.appendingPathComponent(fileName))
+            }
         }
 
-        // Generate locations.tsv
-        let tsvHeader = ["Box Name", "Room", "Sector", "Shelf", "Box Type"]
-        let tsvRows = exportBoxes.map { box in
-            [box.numberOrName, box.room, box.sector, box.shelf, box.boxType]
+        if let allRooms = try? modelContext.fetch(FetchDescriptor<Room>()) {
+            exportList(allRooms.map { $0.roomName }.sorted(), fileName: "rooms.json")
         }
-        let tsvContent = ([tsvHeader] + tsvRows)
-            .map { $0.joined(separator: "\t") }
-            .joined(separator: "\n")
-        let tsvFileURL = exportFolderURL.appendingPathComponent("locations.tsv")
-        do {
-            try tsvContent.write(to: tsvFileURL, atomically: true, encoding: .utf8)
-        } catch {
-            return
+        if let allSectors = try? modelContext.fetch(FetchDescriptor<Sector>()) {
+            exportList(allSectors.map { $0.sectorName }.sorted(), fileName: "sectors.json")
+        }
+        if let allShelves = try? modelContext.fetch(FetchDescriptor<Shelf>()) {
+            exportList(allShelves.map { $0.shelfName }.sorted(), fileName: "shelves.json")
+        }
+        if let allBoxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>()) {
+            exportList(allBoxTypes.map { $0.boxTypeText }.sorted(), fileName: "boxTypes.json")
         }
 
-        // Generate meta.json with richer info (similar to items backup)
+        // Meta info
         let isoFormatter = ISO8601DateFormatter()
         let exportDateString = isoFormatter.string(from: Date())
         let appVersionFull = "itemserv \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))"
-        let deviceName = UIDevice.current.name
-        let deviceModel = UIDevice.current.modelIdentifier
-        let systemVersion = UIDevice.current.systemVersion
 
-        // Collect lists for meta
-        let rooms = Set(boxes.compactMap { $0.room?.roomName }).sorted()
-        let sectors = Set(boxes.compactMap { $0.sector?.sectorName }).sorted()
-        let shelves = Set(boxes.compactMap { $0.shelf?.shelfName }).sorted()
-        let boxTypes = Set(boxes.compactMap { $0.boxType?.boxTypeText }).sorted()
-        let boxNames = boxes.map { $0.numberOrName }
+        // Prepare sorted lists
+        let rooms = (try? modelContext.fetch(FetchDescriptor<Room>()).map { $0.roomName }.sorted()) ?? []
+        let sectors = (try? modelContext.fetch(FetchDescriptor<Sector>()).map { $0.sectorName }.sorted()) ?? []
+        let shelves = (try? modelContext.fetch(FetchDescriptor<Shelf>()).map { $0.shelfName }.sorted()) ?? []
+        let boxTypes = (try? modelContext.fetch(FetchDescriptor<BoxType>()).map { $0.boxTypeText }.sorted()) ?? []
 
-        let metaDict: [String: Any] = [
-            "exportedBy": appVersionFull,
-            "exportedAt": exportDateString,
-            "deviceName": deviceName,
-            "deviceModel": deviceModel,
-            "systemVersion": systemVersion,
-            "totalLocations": boxes.count,
-            "rooms": rooms,
-            "sectors": sectors,
-            "shelves": shelves,
-            "boxNames": boxNames,
-            "boxTypes": boxTypes
-        ]
-
-        // Write meta.json
-        let metaJsonFileURL = exportFolderURL.appendingPathComponent("meta.json")
-        do {
-            let metaJsonData = try JSONSerialization.data(withJSONObject: metaDict, options: [.prettyPrinted])
-            try metaJsonData.write(to: metaJsonFileURL, options: .atomic)
-        } catch {
-            return
+        var boxNames = boxes.map { $0.numberOrName }
+        if let unboxedIndex = boxNames.firstIndex(of: "Unboxed") {
+            let unboxed = boxNames.remove(at: unboxedIndex)
+            boxNames.sort {
+                if let l = Int($0), let r = Int($1) { return l < r }
+                return $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+            }
+            boxNames.insert(unboxed, at: 0)
+        } else {
+            boxNames.sort {
+                if let l = Int($0), let r = Int($1) { return l < r }
+                return $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+            }
         }
 
-        // Generate meta.tsv
+        // Meta JSON (manual order)
+        let orderedMeta = """
+{
+  "exportedBy" : "\(appVersionFull)",
+  "exportedAt" : "\(exportDateString)",
+  "deviceName" : "\(UIDevice.current.name)",
+  "deviceModel" : "\(UIDevice.current.modelIdentifier)",
+  "systemVersion" : "\(UIDevice.current.systemVersion)",
+  "totalLocations" : \(boxes.count),
+  "rooms" : \(jsonArrayString(from: rooms)),
+  "sectors" : \(jsonArrayString(from: sectors)),
+  "shelves" : \(jsonArrayString(from: shelves)),
+  "boxNames" : \(jsonArrayString(from: boxNames)),
+  "boxTypes" : \(jsonArrayString(from: boxTypes))
+}
+"""
+        try? orderedMeta.data(using: .utf8)?.write(to: exportFolderURL.appendingPathComponent("meta.json"))
+
+        // Meta TSV (manual order aligned to JSON)
         var metaTsvLines: [String] = []
         metaTsvLines.append("exportedBy\t\(appVersionFull)")
         metaTsvLines.append("exportedAt\t\(exportDateString)")
-        metaTsvLines.append("deviceName\t\(deviceName)")
-        metaTsvLines.append("deviceModel\t\(deviceModel)")
-        metaTsvLines.append("systemVersion\t\(systemVersion)")
+        metaTsvLines.append("deviceName\t\(UIDevice.current.name)")
+        metaTsvLines.append("deviceModel\t\(UIDevice.current.modelIdentifier)")
+        metaTsvLines.append("systemVersion\t\(UIDevice.current.systemVersion)")
         metaTsvLines.append("totalLocations\t\(boxes.count)")
 
         func appendList(_ title: String, items: [String]) {
@@ -421,32 +429,49 @@ struct ManageLocationsView: View {
 
         let metaTsvContent = metaTsvLines.joined(separator: "\n")
         let metaTsvFileURL = exportFolderURL.appendingPathComponent("meta.tsv")
-        do {
-            try metaTsvContent.write(to: metaTsvFileURL, atomically: true, encoding: .utf8)
-        } catch {
-            return
+        try? metaTsvContent.write(to: metaTsvFileURL, atomically: true, encoding: .utf8)
+        
+        // Export locations.tsv
+        let locationsTsvHeader = ["Room", "Sector", "Shelf", "Box Name", "Box Type"]
+        let locationsTsvRows = exportBoxes.map { [$0.room, $0.sector, $0.shelf, $0.numberOrName, $0.boxType] }
+        let locationsTsvContent = ([locationsTsvHeader] + locationsTsvRows)
+            .map { $0.joined(separator: "\t") }
+            .joined(separator: "\n")
+        let locationsTsvFileURL = exportFolderURL.appendingPathComponent("locations.tsv")
+        try? locationsTsvContent.write(to: locationsTsvFileURL, atomically: true, encoding: .utf8)
+
+        // Helper function for list TSV export
+        func exportListTsv(_ title: String, items: [String]) {
+            let tsvLines = ([ [title] ] + items.map { [$0] })
+                .map { $0.joined(separator: "\t") }
+                .joined(separator: "\n")
+            let fileURL = exportFolderURL.appendingPathComponent("\(title.lowercased()).tsv")
+            try? tsvLines.write(to: fileURL, atomically: true, encoding: .utf8)
         }
 
-        // Create zip containing the export folder
+        // Export individual TSV files
+        exportListTsv("rooms", items: rooms)
+        exportListTsv("sectors", items: sectors)
+        exportListTsv("shelves", items: shelves)
+        exportListTsv("boxTypes", items: boxTypes)
+
+        // Helper to convert array to JSON-like string
+        func jsonArrayString(from array: [String]) -> String {
+            let joined = array.map { "    \"\($0)\"" }.joined(separator: ",\n")
+            return "[\n\(joined)\n  ]"
+        }
+
+        // Zip
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
-        let dateString = dateFormatter.string(from: Date())
-        let zipFileURL = tempDirectory.appendingPathComponent("locations_backup_\(dateString).zip")
-        // Remove zip if exists
-        try? fileManager.removeItem(at: zipFileURL)
-        // Use FileManager's built-in zip API (iOS 16+)
-        do {
-            try fileManager.zipItem(at: exportFolderURL, to: zipFileURL, shouldKeepParent: false)
-        } catch {
-            return
-        }
+        let zipURL = tempDirectory.appendingPathComponent("locations_backup_\(dateFormatter.string(from: Date())).zip")
+        try? fileManager.removeItem(at: zipURL)
+        try? fileManager.zipItem(at: exportFolderURL, to: zipURL, shouldKeepParent: false)
 
-        // Present the share sheet to export the zip file
-        let activityVC = UIActivityViewController(activityItems: [zipFileURL], applicationActivities: nil)
-        // Find the top view controller to present
+        // Share
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootVC = windowScene.windows.first?.rootViewController {
-            rootVC.present(activityVC, animated: true)
+            rootVC.present(UIActivityViewController(activityItems: [zipURL], applicationActivities: nil), animated: true)
         }
     }
 
@@ -578,11 +603,77 @@ struct ManageLocationsView: View {
                 modelContext.insert(box)
             }
 
-            // Removed automatic creation of "Unboxed" box to respect import data
-            // Now, "Unboxed" will only exist if included in the imported locations.json
+            // Import standalone lists (rooms, sectors, shelves, boxTypes) from their JSON files
+            func importList(from fileName: String) -> [String] {
+                let fileURL = unzipFolderURL.appendingPathComponent(fileName)
+                if let data = try? Data(contentsOf: fileURL),
+                   let items = try? decoder.decode([String].self, from: data) {
+                    return items
+                }
+                return []
+            }
+
+            let importedRooms = importList(from: "rooms.json")
+            for roomName in importedRooms where roomMap[roomName] == nil {
+                let room = Room(roomName: roomName)
+                modelContext.insert(room)
+                roomMap[roomName] = room
+            }
+
+            let importedSectors = importList(from: "sectors.json")
+            for sectorName in importedSectors where sectorMap[sectorName] == nil {
+                let sector = Sector(sectorName: sectorName)
+                modelContext.insert(sector)
+                sectorMap[sectorName] = sector
+            }
+
+            let importedShelves = importList(from: "shelves.json")
+            for shelfName in importedShelves where shelfMap[shelfName] == nil {
+                let shelf = Shelf(shelfName: shelfName)
+                modelContext.insert(shelf)
+                shelfMap[shelfName] = shelf
+            }
+
+            let importedBoxTypes = importList(from: "boxTypes.json")
+            for boxTypeText in importedBoxTypes where boxTypeMap[boxTypeText] == nil {
+                let boxType = BoxType(boxTypeText: boxTypeText)
+                modelContext.insert(boxType)
+                boxTypeMap[boxTypeText] = boxType
+            }
 
             try modelContext.save()
             importResultMessage = "Import successful."
+            // Validation checklist: print counts of all imported entities to console
+            if let allRooms = try? modelContext.fetch(FetchDescriptor<Room>()) {
+                print("Validation: Imported Rooms count = \(allRooms.count)")
+            }
+            if let allSectors = try? modelContext.fetch(FetchDescriptor<Sector>()) {
+                print("Validation: Imported Sectors count = \(allSectors.count)")
+            }
+            if let allShelves = try? modelContext.fetch(FetchDescriptor<Shelf>()) {
+                print("Validation: Imported Shelves count = \(allShelves.count)")
+            }
+            if let allBoxTypes = try? modelContext.fetch(FetchDescriptor<BoxType>()) {
+                print("Validation: Imported Box Types count = \(allBoxTypes.count)")
+            }
+            print("Validation: Imported Boxes count = \(boxes.count)")
+
+            // Compare with meta.json values if available
+            if let metaRooms = meta["rooms"] as? [String] {
+                print("Meta: Rooms count = \(metaRooms.count)")
+            }
+            if let metaSectors = meta["sectors"] as? [String] {
+                print("Meta: Sectors count = \(metaSectors.count)")
+            }
+            if let metaShelves = meta["shelves"] as? [String] {
+                print("Meta: Shelves count = \(metaShelves.count)")
+            }
+            if let metaBoxTypes = meta["boxTypes"] as? [String] {
+                print("Meta: Box Types count = \(metaBoxTypes.count)")
+            }
+            if let metaBoxes = meta["boxNames"] as? [String] {
+                print("Meta: Boxes count = \(metaBoxes.count)")
+            }
         } catch {
             importResultMessage = "Import failed: \(error.localizedDescription)"
         }
